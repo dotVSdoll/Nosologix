@@ -1,6 +1,7 @@
 from pathlib import Path
 
-from app.rag.embeddings import EmbeddingModel, HashEmbeddingModel
+from app.config import settings
+from app.rag.embeddings import EmbeddingModel, create_embedding_model
 from app.rag.vector_store import InMemoryVectorStore
 from app.schemas.chunk import DocumentChunk
 from app.schemas.ingestion import IngestedDocument
@@ -15,7 +16,13 @@ class RetrievalService:
         embedding_model: EmbeddingModel | None = None,
         vector_store: InMemoryVectorStore | None = None,
     ) -> None:
-        self.embedding_model = embedding_model or HashEmbeddingModel()
+        self.embedding_model = embedding_model or create_embedding_model(
+            provider=settings.embedding_provider,
+            model_name=settings.embedding_model,
+            dimension=settings.embedding_dimension,
+            device=settings.embedding_device,
+            use_fp16=settings.embedding_use_fp16,
+        )
         self.vector_store = vector_store or InMemoryVectorStore()
 
     def index_chunks(self, chunks: list[DocumentChunk]) -> int:
