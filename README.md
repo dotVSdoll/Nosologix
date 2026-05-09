@@ -1,12 +1,12 @@
-﻿# Med RAG Agent
+# Med RAG Agent
 
-医疗健康场景的 Agentic RAG 多智能体服务平台。
+Healthcare Agentic RAG platform for interview-ready engineering practice.
 
-## 当前阶段
+## Current Phase
 
-Phase 0：项目骨架。
+Phase 1: basic RAG pipeline. The project now supports local `.txt` / `.md` ingestion, text chunking, deterministic offline embedding, in-memory vector retrieval, and HTTP APIs.
 
-## 快速启动
+## Quick Start
 
 ```powershell
 python -m venv .venv
@@ -14,4 +14,26 @@ python -m venv .venv
 .\.venv\Scripts\python -m uvicorn app.main:app --reload
 ```
 
-健康检查：`GET /health`
+Health check: `GET /health`
+
+## Minimal RAG Retrieval Flow
+
+Ingest a local document:
+
+```powershell
+Invoke-RestMethod -Method Post http://127.0.0.1:8000/documents/ingest-local `
+  -ContentType "application/json" `
+  -Body '{"path":"E:/Agentpj/med-rag-agent/data/samples/health_sample.md","chunk_size":300,"chunk_overlap":50}'
+```
+
+Search indexed chunks:
+
+```powershell
+Invoke-RestMethod -Method Post http://127.0.0.1:8000/retrieval/search `
+  -ContentType "application/json" `
+  -Body '{"query":"blood pressure hypertension","top_k":3}'
+```
+
+## Notes
+
+`HashEmbeddingModel` is a deterministic local embedding used for offline tests and pipeline validation. Later phases will add a real embedding provider and ChromaDB or pgvector.
