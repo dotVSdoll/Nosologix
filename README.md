@@ -37,3 +37,30 @@ Invoke-RestMethod -Method Post http://127.0.0.1:8000/retrieval/search `
 ## Notes
 
 `HashEmbeddingModel` is a deterministic local embedding used for offline tests and pipeline validation. Later phases will add a real embedding provider and ChromaDB or pgvector.
+
+
+## Embedding Providers
+
+Default local tests use deterministic hash embeddings:
+
+```env
+EMBEDDING_PROVIDER=hash
+EMBEDDING_MODEL=hash-local
+EMBEDDING_DIMENSION=128
+```
+
+To enable BGE-M3 later, install optional embedding dependencies and update `.env`:
+
+```powershell
+.\.venv\Scripts\python -m pip install -e .[embedding]
+```
+
+```env
+EMBEDDING_PROVIDER=bge-m3
+EMBEDDING_MODEL=BAAI/bge-m3
+EMBEDDING_DIMENSION=1024
+EMBEDDING_DEVICE=cpu
+EMBEDDING_USE_FP16=false
+```
+
+Keep `hash` for CI and offline tests; use `bge-m3` for real retrieval quality.
