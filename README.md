@@ -64,3 +64,32 @@ EMBEDDING_USE_FP16=false
 ```
 
 Keep `hash` for CI and offline tests; use `bge-m3` for real retrieval quality.
+
+
+## Qwen Grounded Answer
+
+Default development mode uses a template answer path. To use Qwen through DashScope OpenAI-compatible APIs, set local `.env` values:
+
+```env
+LLM_PROVIDER=qwen
+LLM_MODEL=qwen-plus
+QWEN_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+QWEN_API_KEY=your-local-key
+LLM_TIMEOUT_SECONDS=60
+```
+
+Do not commit `.env` or API keys.
+
+Grounded answer endpoint:
+
+```powershell
+Invoke-RestMethod -Method Post http://127.0.0.1:8000/chat/grounded `
+  -ContentType "application/json" `
+  -Body '{"question":"What is hypertension?","top_k":3,"use_llm":true}'
+```
+
+For offline testing without an LLM call, use:
+
+```json
+{"question":"What is hypertension?","top_k":3,"use_llm":false}
+```
