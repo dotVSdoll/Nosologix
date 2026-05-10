@@ -3,6 +3,7 @@ from __future__ import annotations
 from app.schemas.answer import Citation, GroundedAnswerResponse
 from app.schemas.llm import ChatMessage
 from app.schemas.retrieval import RetrievalHit
+from app.services.evidence_service import build_evidence_warnings, evidence_status_from_warnings
 from app.services.llm_service import (
     LLMClient,
     LLMServiceError,
@@ -39,25 +40,34 @@ class GroundedAnswerService:
         *,
         top_k: int = 5,
         min_score: float = 0.05,
+        min_citations: int = 1,
         use_llm: bool = True,
     ) -> GroundedAnswerResponse:
         normalized_question = question.strip()
         hits = self.retrieval_service.search(normalized_question, top_k=top_k)
+        evidence_warnings = build_evidence_warnings(
+            hits,
+            min_score=min_score,
+            min_citations=min_citations,
+        )
+        evidence_status = evidence_status_from_warnings(evidence_warnings)
         relevant_hits = [hit for hit in hits if hit.score >= min_score]
         citations = build_citations(relevant_hits)
 
         initial_safety = assess_medical_safety(normalized_question)
 
-        if not citations:
+        if evidence_status == "insufficient" or not citations:
             return GroundedAnswerResponse(
                 question=normalized_question,
                 answer="I do not have enough retrieved evidence to answer this question reliably.",
                 citations=[],
                 confidence="low",
-                limitations=["No retrieved chunk met the minimum evidence score."],
+                limitations=["No retrieved chunk met the evidence quality requirements."],
                 risk_level=initial_safety.risk_level,
                 should_seek_doctor=initial_safety.should_seek_doctor,
                 safety_warnings=initial_safety.safety_warnings,
+                evidence_status=evidence_status,
+                evidence_warnings=evidence_warnings,
                 used_model="none",
                 provider="none",
                 retrieval_hits=hits,
@@ -85,6 +95,8 @@ class GroundedAnswerService:
                     risk_level=safety.risk_level,
                     should_seek_doctor=safety.should_seek_doctor,
                     safety_warnings=safety.safety_warnings,
+                    evidence_status=evidence_status,
+                    evidence_warnings=evidence_warnings,
                     used_model="template-fallback",
                     provider="template",
                     retrieval_hits=hits,
@@ -106,6 +118,8 @@ class GroundedAnswerService:
             risk_level=safety.risk_level,
             should_seek_doctor=safety.should_seek_doctor,
             safety_warnings=safety.safety_warnings,
+            evidence_status=evidence_status,
+            evidence_warnings=evidence_warnings,
             used_model=used_model,
             provider=provider,
             retrieval_hits=hits,

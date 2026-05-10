@@ -35,6 +35,7 @@ def test_grounded_chat_api_returns_template_answer(tmp_path) -> None:
     assert payload["retrieval_hits"]
     assert "risk_level" in payload
     assert "safety_warnings" in payload
+    assert payload["evidence_status"] == "sufficient"
 
 
 def test_grounded_chat_api_rejects_blank_question() -> None:

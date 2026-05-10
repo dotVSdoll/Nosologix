@@ -21,5 +21,6 @@ def grounded_answer(request: GroundedAnswerRequest) -> GroundedAnswerResponse:
         question,
         top_k=request.top_k,
         min_score=request.min_score,
+        min_citations=request.min_citations,
         use_llm=request.use_llm,
     )

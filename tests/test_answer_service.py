@@ -63,3 +63,25 @@ def test_grounded_answer_marks_emergency_even_without_evidence() -> None:
     assert response.risk_level == RiskLevel.EMERGENCY
     assert response.should_seek_doctor is True
     assert response.safety_warnings
+
+
+
+def test_grounded_answer_does_not_call_llm_when_evidence_is_insufficient(tmp_path) -> None:
+    path = tmp_path / "health.md"
+    path.write_text("Hypertension means high blood pressure.", encoding="utf-8")
+    retrieval = RetrievalService(embedding_model=HashEmbeddingModel(dimension=64))
+    retrieval.ingest_and_index_document(path, chunk_size=90, chunk_overlap=10)
+    service = GroundedAnswerService(retrieval_service=retrieval, llm_client=StubLLMClient())
+
+    response = service.answer(
+        "What is hypertension?",
+        top_k=2,
+        min_score=0.0,
+        min_citations=2,
+        use_llm=True,
+    )
+
+    assert response.evidence_status == "insufficient"
+    assert response.used_model == "none"
+    assert response.provider == "none"
+    assert response.evidence_warnings

@@ -104,3 +104,13 @@ Grounded answers include lightweight safety fields:
 - `safety_warnings`: user-facing safety notes
 
 The current rules are keyword-based and intentionally conservative. Later phases will move this into an agentic safety review step.
+
+
+## Evidence Quality Guard
+
+`POST /chat/grounded` supports evidence thresholds:
+
+- `min_score`: minimum retrieval score for citations
+- `min_citations`: minimum number of qualifying citations
+
+If evidence is insufficient, the service returns a low-confidence answer and does not call the LLM.
