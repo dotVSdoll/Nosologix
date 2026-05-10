@@ -18,6 +18,7 @@ class GroundedAnswerRequest(BaseModel):
     question: str = Field(min_length=1)
     top_k: int = Field(default=5, gt=0, le=10)
     min_score: float = Field(default=0.05, ge=0.0, le=1.0)
+    min_citations: int = Field(default=1, ge=1, le=5)
     use_llm: bool = True
 
 
@@ -30,6 +31,8 @@ class GroundedAnswerResponse(BaseModel):
     risk_level: RiskLevel = RiskLevel.LOW
     should_seek_doctor: bool = False
     safety_warnings: list[str] = Field(default_factory=list)
+    evidence_status: str = "sufficient"
+    evidence_warnings: list[str] = Field(default_factory=list)
     used_model: str
     provider: str
     retrieval_hits: list[RetrievalHit] = Field(default_factory=list)
