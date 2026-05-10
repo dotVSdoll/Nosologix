@@ -1,4 +1,5 @@
 from app.rag.embeddings import HashEmbeddingModel
+from app.rag.vector_store import InMemoryVectorStore
 from app.schemas.llm import ChatMessage, LLMResponse
 from app.schemas.safety import RiskLevel
 from app.services.answer_service import GroundedAnswerService
@@ -35,6 +36,13 @@ class FailingLLMClient:
         )
 
 
+def _retrieval_service() -> RetrievalService:
+    return RetrievalService(
+        embedding_model=HashEmbeddingModel(dimension=64),
+        vector_store=InMemoryVectorStore(),
+    )
+
+
 def test_grounded_answer_uses_llm_and_citations(tmp_path) -> None:
     path = tmp_path / "health.md"
     path.write_text(
@@ -42,7 +50,7 @@ def test_grounded_answer_uses_llm_and_citations(tmp_path) -> None:
         "Chest pain and difficulty breathing need urgent care.",
         encoding="utf-8",
     )
-    retrieval = RetrievalService(embedding_model=HashEmbeddingModel(dimension=64))
+    retrieval = _retrieval_service()
     retrieval.ingest_and_index_document(path, chunk_size=90, chunk_overlap=10)
     service = GroundedAnswerService(retrieval_service=retrieval, llm_client=StubLLMClient())
 
@@ -58,7 +66,7 @@ def test_grounded_answer_uses_llm_and_citations(tmp_path) -> None:
 
 
 def test_grounded_answer_returns_low_confidence_without_evidence() -> None:
-    retrieval = RetrievalService(embedding_model=HashEmbeddingModel(dimension=64))
+    retrieval = _retrieval_service()
     service = GroundedAnswerService(retrieval_service=retrieval, llm_client=StubLLMClient())
 
     response = service.answer("What is hypertension?", top_k=2)
@@ -70,7 +78,7 @@ def test_grounded_answer_returns_low_confidence_without_evidence() -> None:
 
 
 def test_grounded_answer_marks_emergency_even_without_evidence() -> None:
-    retrieval = RetrievalService(embedding_model=HashEmbeddingModel(dimension=64))
+    retrieval = _retrieval_service()
     service = GroundedAnswerService(retrieval_service=retrieval, llm_client=StubLLMClient())
 
     response = service.answer("I have chest pain and difficulty breathing", top_k=2)
@@ -85,7 +93,7 @@ def test_grounded_answer_marks_emergency_even_without_evidence() -> None:
 def test_grounded_answer_does_not_call_llm_when_evidence_is_insufficient(tmp_path) -> None:
     path = tmp_path / "health.md"
     path.write_text("Hypertension means high blood pressure.", encoding="utf-8")
-    retrieval = RetrievalService(embedding_model=HashEmbeddingModel(dimension=64))
+    retrieval = _retrieval_service()
     retrieval.ingest_and_index_document(path, chunk_size=90, chunk_overlap=10)
     service = GroundedAnswerService(retrieval_service=retrieval, llm_client=StubLLMClient())
 
@@ -106,7 +114,7 @@ def test_grounded_answer_does_not_call_llm_when_evidence_is_insufficient(tmp_pat
 def test_grounded_answer_reports_safe_llm_error_diagnostics(tmp_path) -> None:
     path = tmp_path / "health.md"
     path.write_text("Hypertension means high blood pressure.", encoding="utf-8")
-    retrieval = RetrievalService(embedding_model=HashEmbeddingModel(dimension=64))
+    retrieval = _retrieval_service()
     retrieval.ingest_and_index_document(path, chunk_size=90, chunk_overlap=10)
     service = GroundedAnswerService(retrieval_service=retrieval, llm_client=FailingLLMClient())
 
@@ -128,7 +136,7 @@ def test_grounded_answer_safety_uses_question_risk_not_unrelated_evidence(tmp_pa
         "Chest pain and difficulty breathing should receive urgent medical care.",
         encoding="utf-8",
     )
-    retrieval = RetrievalService(embedding_model=HashEmbeddingModel(dimension=64))
+    retrieval = _retrieval_service()
     retrieval.ingest_and_index_document(path, chunk_size=200, chunk_overlap=10)
     service = GroundedAnswerService(retrieval_service=retrieval, llm_client=StubLLMClient())
 

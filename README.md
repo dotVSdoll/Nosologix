@@ -90,6 +90,13 @@ VECTOR_STORE_COLLECTION=med_rag_chunks
 
 Keep `memory` for fast tests; use `chroma` when you need indexed chunks to survive service restarts.
 
+Quick persistence check:
+
+```powershell
+.\.venv\Scripts\python -c "from app.services.retrieval_service import RetrievalService; s=RetrievalService(); s.ingest_and_index_document('data/samples/health_sample.md', chunk_size=300, chunk_overlap=50); print(s.vector_store.count())"
+.\.venv\Scripts\python -c "from app.services.retrieval_service import RetrievalService; s=RetrievalService(); print(s.search('blood pressure hypertension', top_k=1)[0].chunk.id)"
+```
+
 
 ## Qwen Grounded Answer
 

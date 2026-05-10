@@ -7,6 +7,7 @@ from statistics import mean
 from typing import Any
 
 from app.rag.embeddings import create_embedding_model
+from app.rag.vector_store import InMemoryVectorStore
 from app.schemas.answer import GroundedAnswerResponse
 from app.services.answer_service import GroundedAnswerService
 from app.services.llm_service import TemplateLLMClient
@@ -71,7 +72,8 @@ def run_eval(
             dimension=embedding_dimension,
             device=embedding_device,
             use_fp16=embedding_use_fp16,
-        )
+        ),
+        vector_store=InMemoryVectorStore(),
     )
 
     indexed_chunks = 0

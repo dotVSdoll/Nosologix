@@ -2,6 +2,7 @@ import pytest
 
 from app.rag.embeddings import HashEmbeddingModel, cosine_similarity
 from app.rag.vector_store import (
+    ChromaVectorStore,
     InMemoryVectorStore,
     VectorStoreProviderError,
     create_vector_store,
@@ -58,7 +59,10 @@ def test_retrieval_service_ingests_indexes_and_searches(tmp_path) -> None:
         "Docker images are used for software deployment.\n",
         encoding="utf-8",
     )
-    service = RetrievalService(embedding_model=HashEmbeddingModel(dimension=64))
+    service = RetrievalService(
+        embedding_model=HashEmbeddingModel(dimension=64),
+        vector_store=InMemoryVectorStore(),
+    )
 
     ingested = service.ingest_and_index_document(path, chunk_size=80, chunk_overlap=10)
     hits = service.search("blood pressure hypertension", top_k=1)
@@ -111,3 +115,28 @@ def test_chroma_vector_store_reports_missing_optional_dependency(tmp_path, monke
             persist_path=tmp_path,
             collection_name="test_chunks",
         )
+
+
+def test_chroma_vector_store_persists_chunks_across_instances(tmp_path) -> None:
+    pytest.importorskip("chromadb")
+    model = HashEmbeddingModel(dimension=64)
+    chunks = [
+        _chunk("chunk0", "blood pressure hypertension salt exercise"),
+        _chunk("chunk1", "software deployment docker container"),
+    ]
+    first_store = ChromaVectorStore(
+        persist_path=tmp_path,
+        collection_name="test_chunks",
+    )
+    first_store.clear()
+    first_store.upsert_many(chunks, model.embed_documents(chunk.content for chunk in chunks))
+
+    second_store = ChromaVectorStore(
+        persist_path=tmp_path,
+        collection_name="test_chunks",
+    )
+    hits = second_store.search(model.embed_text("hypertension pressure"), top_k=2)
+
+    assert second_store.count() == 2
+    assert hits[0].chunk.id == "chunk0"
+    assert hits[0].chunk.metadata["source"] == "unit-test"
