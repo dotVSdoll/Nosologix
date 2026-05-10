@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 
 from app.schemas.retrieval import RetrievalHit
+from app.schemas.safety import RiskLevel
 
 
 class Citation(BaseModel):
@@ -26,6 +27,9 @@ class GroundedAnswerResponse(BaseModel):
     citations: list[Citation]
     confidence: str
     limitations: list[str] = Field(default_factory=list)
+    risk_level: RiskLevel = RiskLevel.LOW
+    should_seek_doctor: bool = False
+    safety_warnings: list[str] = Field(default_factory=list)
     used_model: str
     provider: str
     retrieval_hits: list[RetrievalHit] = Field(default_factory=list)

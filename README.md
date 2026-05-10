@@ -93,3 +93,14 @@ For offline testing without an LLM call, use:
 ```json
 {"question":"What is hypertension?","top_k":3,"use_llm":false}
 ```
+
+
+## Healthcare Safety Fields
+
+Grounded answers include lightweight safety fields:
+
+- `risk_level`: `low`, `medium`, `high`, or `emergency`
+- `should_seek_doctor`: whether clinician follow-up is recommended
+- `safety_warnings`: user-facing safety notes
+
+The current rules are keyword-based and intentionally conservative. Later phases will move this into an agentic safety review step.
