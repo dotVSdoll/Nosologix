@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Protocol
+from typing import Any, Protocol
 
 import httpx
 
@@ -9,7 +9,27 @@ from app.schemas.llm import ChatMessage, LLMResponse
 
 
 class LLMServiceError(RuntimeError):
-    pass
+    def __init__(
+        self,
+        message: str,
+        *,
+        provider: str = "unknown",
+        error_type: str = "unknown",
+        status_code: int | None = None,
+        error_code: str | None = None,
+        retryable: bool = False,
+    ) -> None:
+        super().__init__(message)
+        self.provider = provider
+        self.error_type = error_type
+        self.status_code = status_code
+        self.error_code = error_code
+        self.retryable = retryable
+
+    def safe_message(self) -> str:
+        status = f" HTTP {self.status_code}." if self.status_code else "."
+        code = f" Provider code: {self.error_code}." if self.error_code else ""
+        return f"{self.args[0]}{status}{code}"
 
 
 class LLMClient(Protocol):
@@ -68,14 +88,40 @@ class QwenLLMClient:
                 timeout=self.timeout_seconds,
             )
             response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            error_code, provider_message = _extract_provider_error(exc.response)
+            raise LLMServiceError(
+                provider_message or "Qwen chat request was rejected by the provider",
+                provider=self.provider,
+                error_type="http_status",
+                status_code=exc.response.status_code,
+                error_code=error_code,
+                retryable=exc.response.status_code in {408, 429, 500, 502, 503, 504},
+            ) from exc
+        except httpx.TimeoutException as exc:
+            raise LLMServiceError(
+                "Qwen chat request timed out",
+                provider=self.provider,
+                error_type="timeout",
+                retryable=True,
+            ) from exc
         except httpx.HTTPError as exc:
-            raise LLMServiceError(f"Qwen chat request failed: {exc}") from exc
+            raise LLMServiceError(
+                "Qwen chat request failed before receiving a valid response",
+                provider=self.provider,
+                error_type=exc.__class__.__name__,
+                retryable=True,
+            ) from exc
 
         data = response.json()
         try:
             content = data["choices"][0]["message"]["content"]
         except (KeyError, IndexError, TypeError) as exc:
-            raise LLMServiceError("Qwen chat response has unexpected format") from exc
+            raise LLMServiceError(
+                "Qwen chat response has unexpected format",
+                provider=self.provider,
+                error_type="invalid_response",
+            ) from exc
 
         return LLMResponse(content=content, model=self.model, provider=self.provider, raw=data)
 
@@ -92,3 +138,21 @@ def create_llm_client() -> LLMClient:
             timeout_seconds=settings.llm_timeout_seconds,
         )
     raise LLMServiceError(f"Unsupported LLM provider: {settings.llm_provider}")
+
+
+def _extract_provider_error(response: httpx.Response) -> tuple[str | None, str | None]:
+    try:
+        data: Any = response.json()
+    except ValueError:
+        return None, None
+
+    error = data.get("error") if isinstance(data, dict) else None
+    if not isinstance(error, dict):
+        return None, None
+
+    code = error.get("code")
+    message = error.get("message")
+    return (
+        str(code) if code else None,
+        str(message) if message else None,
+    )

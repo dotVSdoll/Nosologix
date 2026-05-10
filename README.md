@@ -4,7 +4,7 @@ Healthcare Agentic RAG platform for interview-ready engineering practice.
 
 ## Current Phase
 
-Phase 1: basic RAG pipeline. The project now supports local `.txt` / `.md` ingestion, text chunking, deterministic offline embedding, in-memory vector retrieval, and HTTP APIs.
+Phase 2: grounded healthcare RAG. The project now supports local ingestion, configurable embeddings, retrieval APIs, grounded answers, healthcare safety fields, evidence quality guard, and safe LLM diagnostics.
 
 ## Quick Start
 
@@ -114,3 +114,15 @@ The current rules are keyword-based and intentionally conservative. Later phases
 - `min_citations`: minimum number of qualifying citations
 
 If evidence is insufficient, the service returns a low-confidence answer and does not call the LLM.
+
+
+## LLM Diagnostics
+
+Use diagnostics endpoints to verify provider config without exposing API keys:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/diagnostics/llm-config
+Invoke-RestMethod -Method Post http://127.0.0.1:8000/diagnostics/llm-check
+```
+
+`/diagnostics/llm-check` returns `available`, `status_code`, provider `error_code`, and `retryable` so Qwen quota or permission issues are visible during development.

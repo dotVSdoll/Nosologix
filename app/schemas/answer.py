@@ -33,6 +33,10 @@ class GroundedAnswerResponse(BaseModel):
     safety_warnings: list[str] = Field(default_factory=list)
     evidence_status: str = "sufficient"
     evidence_warnings: list[str] = Field(default_factory=list)
+    llm_error_type: str | None = None
+    llm_error_status_code: int | None = None
+    llm_error_code: str | None = None
+    llm_error_retryable: bool | None = None
     used_model: str
     provider: str
     retrieval_hits: list[RetrievalHit] = Field(default_factory=list)

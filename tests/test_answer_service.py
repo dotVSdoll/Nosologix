@@ -2,6 +2,7 @@ from app.rag.embeddings import HashEmbeddingModel
 from app.schemas.llm import ChatMessage, LLMResponse
 from app.schemas.safety import RiskLevel
 from app.services.answer_service import GroundedAnswerService
+from app.services.llm_service import LLMServiceError
 from app.services.retrieval_service import RetrievalService
 
 
@@ -16,6 +17,21 @@ class StubLLMClient:
             content="Hypertension relates to blood pressure. [C1]",
             model=self.model,
             provider=self.provider,
+        )
+
+
+class FailingLLMClient:
+    provider = "qwen"
+    model = "qwen-plus"
+
+    def chat(self, messages: list[ChatMessage], *, temperature: float = 0.2) -> LLMResponse:
+        raise LLMServiceError(
+            "Provider denied access",
+            provider=self.provider,
+            error_type="http_status",
+            status_code=403,
+            error_code="Forbidden",
+            retryable=False,
         )
 
 
@@ -85,3 +101,21 @@ def test_grounded_answer_does_not_call_llm_when_evidence_is_insufficient(tmp_pat
     assert response.used_model == "none"
     assert response.provider == "none"
     assert response.evidence_warnings
+
+
+def test_grounded_answer_reports_safe_llm_error_diagnostics(tmp_path) -> None:
+    path = tmp_path / "health.md"
+    path.write_text("Hypertension means high blood pressure.", encoding="utf-8")
+    retrieval = RetrievalService(embedding_model=HashEmbeddingModel(dimension=64))
+    retrieval.ingest_and_index_document(path, chunk_size=90, chunk_overlap=10)
+    service = GroundedAnswerService(retrieval_service=retrieval, llm_client=FailingLLMClient())
+
+    response = service.answer("What is hypertension?", top_k=1, min_score=0.0, use_llm=True)
+
+    assert response.provider == "template"
+    assert response.used_model == "template-fallback"
+    assert response.llm_error_type == "http_status"
+    assert response.llm_error_status_code == 403
+    assert response.llm_error_code == "Forbidden"
+    assert response.llm_error_retryable is False
+    assert "Provider denied access" in response.limitations[1]
