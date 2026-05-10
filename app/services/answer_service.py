@@ -85,7 +85,7 @@ class GroundedAnswerService:
             except LLMServiceError as exc:
                 answer_text = _build_template_answer(normalized_question, citations)
                 citations_note = "LLM generation failed; returned an extractive fallback."
-                safety = assess_medical_safety(normalized_question, answer_text)
+                safety = assess_medical_safety(normalized_question)
                 return GroundedAnswerResponse(
                     question=normalized_question,
                     answer=answer_text,
@@ -110,7 +110,7 @@ class GroundedAnswerService:
             used_model = TemplateLLMClient.model
             provider = TemplateLLMClient.provider
 
-        safety = assess_medical_safety(normalized_question, answer_text)
+        safety = assess_medical_safety(normalized_question)
         return GroundedAnswerResponse(
             question=normalized_question,
             answer=answer_text,

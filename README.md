@@ -126,3 +126,14 @@ Invoke-RestMethod -Method Post http://127.0.0.1:8000/diagnostics/llm-check
 ```
 
 `/diagnostics/llm-check` returns `available`, `status_code`, provider `error_code`, and `retryable` so Qwen quota or permission issues are visible during development.
+
+
+## Local RAG Evaluation
+
+Run the lightweight offline eval suite:
+
+```powershell
+.\.venv\Scripts\python scripts\run_eval.py
+```
+
+The default fixture checks retrieval hit rate, evidence status accuracy, and healthcare safety accuracy. Reports are written under `eval/reports/` and are ignored by Git.

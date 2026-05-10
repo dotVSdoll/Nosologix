@@ -119,3 +119,20 @@ def test_grounded_answer_reports_safe_llm_error_diagnostics(tmp_path) -> None:
     assert response.llm_error_code == "Forbidden"
     assert response.llm_error_retryable is False
     assert "Provider denied access" in response.limitations[1]
+
+
+def test_grounded_answer_safety_uses_question_risk_not_unrelated_evidence(tmp_path) -> None:
+    path = tmp_path / "health.md"
+    path.write_text(
+        "Hypertension means blood pressure remains higher than recommended.\n\n"
+        "Chest pain and difficulty breathing should receive urgent medical care.",
+        encoding="utf-8",
+    )
+    retrieval = RetrievalService(embedding_model=HashEmbeddingModel(dimension=64))
+    retrieval.ingest_and_index_document(path, chunk_size=200, chunk_overlap=10)
+    service = GroundedAnswerService(retrieval_service=retrieval, llm_client=StubLLMClient())
+
+    response = service.answer("What is hypertension?", top_k=2, min_score=0.0, use_llm=False)
+
+    assert response.risk_level == RiskLevel.MEDIUM
+    assert response.should_seek_doctor is True
