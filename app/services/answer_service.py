@@ -10,6 +10,7 @@ from app.services.llm_service import (
     create_llm_client,
 )
 from app.services.retrieval_service import RetrievalService
+from app.services.safety_service import assess_medical_safety
 
 SYSTEM_PROMPT = """You are a healthcare knowledge assistant for retrieval-augmented answers.
 Follow these rules:
@@ -18,6 +19,7 @@ Follow these rules:
 - Do not diagnose, prescribe medication, or replace professional medical care.
 - If evidence is insufficient, say so clearly.
 - For urgent or severe symptoms, advise seeking emergency medical care.
+- Do not provide medication dosage, diagnosis, or treatment instructions beyond evidence.
 """
 
 
@@ -44,6 +46,8 @@ class GroundedAnswerService:
         relevant_hits = [hit for hit in hits if hit.score >= min_score]
         citations = build_citations(relevant_hits)
 
+        initial_safety = assess_medical_safety(normalized_question)
+
         if not citations:
             return GroundedAnswerResponse(
                 question=normalized_question,
@@ -51,6 +55,9 @@ class GroundedAnswerService:
                 citations=[],
                 confidence="low",
                 limitations=["No retrieved chunk met the minimum evidence score."],
+                risk_level=initial_safety.risk_level,
+                should_seek_doctor=initial_safety.should_seek_doctor,
+                safety_warnings=initial_safety.safety_warnings,
                 used_model="none",
                 provider="none",
                 retrieval_hits=hits,
@@ -68,12 +75,16 @@ class GroundedAnswerService:
             except LLMServiceError as exc:
                 answer_text = _build_template_answer(normalized_question, citations)
                 citations_note = "LLM generation failed; returned an extractive fallback."
+                safety = assess_medical_safety(normalized_question, answer_text)
                 return GroundedAnswerResponse(
                     question=normalized_question,
                     answer=answer_text,
                     citations=citations,
                     confidence=_estimate_confidence(citations),
                     limitations=[citations_note, str(exc)],
+                    risk_level=safety.risk_level,
+                    should_seek_doctor=safety.should_seek_doctor,
+                    safety_warnings=safety.safety_warnings,
                     used_model="template-fallback",
                     provider="template",
                     retrieval_hits=hits,
@@ -83,6 +94,7 @@ class GroundedAnswerService:
             used_model = TemplateLLMClient.model
             provider = TemplateLLMClient.provider
 
+        safety = assess_medical_safety(normalized_question, answer_text)
         return GroundedAnswerResponse(
             question=normalized_question,
             answer=answer_text,
@@ -91,6 +103,9 @@ class GroundedAnswerService:
             limitations=[
                 "This answer is for informational support and is not a medical diagnosis."
             ],
+            risk_level=safety.risk_level,
+            should_seek_doctor=safety.should_seek_doctor,
+            safety_warnings=safety.safety_warnings,
             used_model=used_model,
             provider=provider,
             retrieval_hits=hits,

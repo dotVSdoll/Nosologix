@@ -1,5 +1,6 @@
 from app.rag.embeddings import HashEmbeddingModel
 from app.schemas.llm import ChatMessage, LLMResponse
+from app.schemas.safety import RiskLevel
 from app.services.answer_service import GroundedAnswerService
 from app.services.retrieval_service import RetrievalService
 
@@ -36,6 +37,8 @@ def test_grounded_answer_uses_llm_and_citations(tmp_path) -> None:
     assert response.citations
     assert "[C1]" in response.answer
     assert response.retrieval_hits
+    assert response.risk_level == RiskLevel.MEDIUM
+    assert response.should_seek_doctor is True
 
 
 def test_grounded_answer_returns_low_confidence_without_evidence() -> None:
@@ -48,3 +51,15 @@ def test_grounded_answer_returns_low_confidence_without_evidence() -> None:
     assert response.citations == []
     assert response.used_model == "none"
     assert "not have enough" in response.answer
+
+
+def test_grounded_answer_marks_emergency_even_without_evidence() -> None:
+    retrieval = RetrievalService(embedding_model=HashEmbeddingModel(dimension=64))
+    service = GroundedAnswerService(retrieval_service=retrieval, llm_client=StubLLMClient())
+
+    response = service.answer("I have chest pain and difficulty breathing", top_k=2)
+
+    assert response.confidence == "low"
+    assert response.risk_level == RiskLevel.EMERGENCY
+    assert response.should_seek_doctor is True
+    assert response.safety_warnings
