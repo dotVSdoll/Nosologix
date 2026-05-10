@@ -72,7 +72,7 @@ Default development mode uses a template answer path. To use Qwen through DashSc
 
 ```env
 LLM_PROVIDER=qwen
-LLM_MODEL=qwen-plus
+LLM_MODEL=qwen3.6-plus
 QWEN_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 QWEN_API_KEY=your-local-key
 LLM_TIMEOUT_SECONDS=60
