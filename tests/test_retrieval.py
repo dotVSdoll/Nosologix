@@ -1,7 +1,11 @@
 import pytest
 
 from app.rag.embeddings import HashEmbeddingModel, cosine_similarity
-from app.rag.vector_store import InMemoryVectorStore
+from app.rag.vector_store import (
+    InMemoryVectorStore,
+    VectorStoreProviderError,
+    create_vector_store,
+)
 from app.schemas.chunk import DocumentChunk
 from app.services.retrieval_service import RetrievalService
 
@@ -70,3 +74,40 @@ def test_vector_store_rejects_invalid_inputs() -> None:
         store.search([0.1], top_k=0)
     with pytest.raises(ValueError):
         store.upsert_many([_chunk("chunk0", "content")], [])
+
+
+def test_create_vector_store_defaults_to_in_memory(tmp_path) -> None:
+    store = create_vector_store(
+        provider="memory",
+        persist_path=tmp_path,
+        collection_name="test_chunks",
+    )
+
+    assert isinstance(store, InMemoryVectorStore)
+
+
+def test_create_vector_store_rejects_unknown_provider(tmp_path) -> None:
+    with pytest.raises(VectorStoreProviderError):
+        create_vector_store(
+            provider="unknown",
+            persist_path=tmp_path,
+            collection_name="test_chunks",
+        )
+
+
+def test_chroma_vector_store_reports_missing_optional_dependency(tmp_path, monkeypatch) -> None:
+    real_import = __import__
+
+    def fake_import(name, *args, **kwargs):
+        if name == "chromadb":
+            raise ImportError("missing chromadb")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr("builtins.__import__", fake_import)
+
+    with pytest.raises(VectorStoreProviderError, match="ChromaDB"):
+        create_vector_store(
+            provider="chroma",
+            persist_path=tmp_path,
+            collection_name="test_chunks",
+        )

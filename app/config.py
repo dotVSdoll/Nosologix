@@ -5,7 +5,9 @@ class Settings(BaseSettings):
     app_name: str = "Med RAG Agent"
     environment: str = "development"
     database_url: str = "sqlite:///./data/app.db"
+    vector_store_provider: str = "memory"
     vector_store_path: str = "./data/vectorstore"
+    vector_store_collection: str = "med_rag_chunks"
     embedding_provider: str = "hash"
     embedding_model: str = "hash-local"
     embedding_dimension: int = 128

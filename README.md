@@ -66,6 +66,31 @@ EMBEDDING_USE_FP16=false
 Keep `hash` for CI and offline tests; use `bge-m3` for real retrieval quality.
 
 
+## Vector Store
+
+Default development mode uses an in-memory vector store:
+
+```env
+VECTOR_STORE_PROVIDER=memory
+VECTOR_STORE_PATH=./data/vectorstore
+VECTOR_STORE_COLLECTION=med_rag_chunks
+```
+
+To enable persistent ChromaDB later, install optional RAG dependencies and switch provider:
+
+```powershell
+.\.venv\Scripts\python -m pip install -e .[rag]
+```
+
+```env
+VECTOR_STORE_PROVIDER=chroma
+VECTOR_STORE_PATH=./data/vectorstore
+VECTOR_STORE_COLLECTION=med_rag_chunks
+```
+
+Keep `memory` for fast tests; use `chroma` when you need indexed chunks to survive service restarts.
+
+
 ## Qwen Grounded Answer
 
 Default development mode uses a template answer path. To use Qwen through DashScope OpenAI-compatible APIs, set local `.env` values:
