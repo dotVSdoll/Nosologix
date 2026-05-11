@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     embedding_dimension: int = 128
     embedding_device: str = "cpu"
     embedding_use_fp16: bool = False
+    reranker_provider: str = "none"
+    reranker_model: str = "BAAI/bge-reranker-v2-m3"
+    reranker_use_fp16: bool = False
     llm_provider: str = "template"
     llm_model: str = "template-local"
     qwen_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"

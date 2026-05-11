@@ -66,6 +66,31 @@ EMBEDDING_USE_FP16=false
 Keep `hash` for CI and offline tests; use `bge-m3` for real retrieval quality.
 
 
+## Reranker
+
+Reranking is disabled by default:
+
+```env
+RERANKER_PROVIDER=none
+RERANKER_MODEL=BAAI/bge-reranker-v2-m3
+RERANKER_USE_FP16=false
+```
+
+For real retrieval quality, install the optional FlagEmbedding dependency and enable BGE reranker:
+
+```powershell
+.\.venv\Scripts\python -m pip install -e .[embedding]
+```
+
+```env
+RERANKER_PROVIDER=bge-reranker
+RERANKER_MODEL=BAAI/bge-reranker-v2-m3
+RERANKER_USE_FP16=true
+```
+
+The retriever sorts hits by `rerank_score` when enabled, while `score` remains the original retrieval score used by the evidence guard.
+
+
 ## Vector Store
 
 Default development mode uses an in-memory vector store:

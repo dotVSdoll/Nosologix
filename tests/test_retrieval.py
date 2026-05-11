@@ -1,6 +1,7 @@
 import pytest
 
 from app.rag.embeddings import HashEmbeddingModel, cosine_similarity
+from app.rag.rerankers import KeywordOverlapReranker
 from app.rag.vector_store import (
     ChromaVectorStore,
     InMemoryVectorStore,
@@ -8,7 +9,8 @@ from app.rag.vector_store import (
     create_vector_store,
 )
 from app.schemas.chunk import DocumentChunk
-from app.services.retrieval_service import RetrievalService
+from app.schemas.retrieval import RetrievalHit
+from app.services.retrieval_service import RetrievalService, rerank_hits
 
 
 def _chunk(chunk_id: str, content: str) -> DocumentChunk:
@@ -78,6 +80,25 @@ def test_vector_store_rejects_invalid_inputs() -> None:
         store.search([0.1], top_k=0)
     with pytest.raises(ValueError):
         store.upsert_many([_chunk("chunk0", "content")], [])
+
+
+def test_rerank_hits_preserves_retrieval_score_and_updates_rank() -> None:
+    hits = [
+        RetrievalHit(chunk=_chunk("chunk0", "software deployment docker"), score=0.9, rank=1),
+        RetrievalHit(chunk=_chunk("chunk1", "blood pressure hypertension"), score=0.2, rank=2),
+    ]
+
+    reranked = rerank_hits(
+        query="hypertension blood pressure",
+        hits=hits,
+        reranker=KeywordOverlapReranker(),
+    )
+
+    assert reranked[0].chunk.id == "chunk1"
+    assert reranked[0].rank == 1
+    assert reranked[0].score == 0.2
+    assert reranked[0].retrieval_score == 0.2
+    assert reranked[0].rerank_score is not None
 
 
 def test_create_vector_store_defaults_to_in_memory(tmp_path) -> None:

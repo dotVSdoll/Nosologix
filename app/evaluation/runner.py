@@ -74,6 +74,7 @@ def run_eval(
             use_fp16=embedding_use_fp16,
         ),
         vector_store=InMemoryVectorStore(),
+        reranker=None,
     )
 
     indexed_chunks = 0
