@@ -152,6 +152,19 @@ For offline testing without an LLM call, use:
 ```
 
 
+## Agentic RAG Workflow
+
+The first agentic endpoint exposes a traceable multi-step RAG workflow:
+
+```powershell
+Invoke-RestMethod -Method Post http://127.0.0.1:8000/agents/rag `
+  -ContentType "application/json" `
+  -Body '{"question":"What is hypertension?","top_k":3,"use_llm":true,"include_trace":true}'
+```
+
+Current steps are `query_planner`, `retriever`, `evidence_critic`, `safety_reviewer`, and `answer_composer`. The implementation is dependency-light today and can later be mapped to LangGraph nodes.
+
+
 ## Healthcare Safety Fields
 
 Grounded answers include lightweight safety fields:

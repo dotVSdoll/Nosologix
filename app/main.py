@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 
+from app.api.agents import router as agents_router
 from app.api.chat import router as chat_router
 from app.api.diagnostics import router as diagnostics_router
 from app.api.documents import router as documents_router
@@ -14,6 +15,7 @@ def create_app() -> FastAPI:
     app.include_router(documents_router)
     app.include_router(retrieval_router)
     app.include_router(chat_router)
+    app.include_router(agents_router)
     app.include_router(diagnostics_router)
     return app
 
