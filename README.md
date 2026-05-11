@@ -162,7 +162,7 @@ Invoke-RestMethod -Method Post http://127.0.0.1:8000/agents/rag `
   -Body '{"question":"What is hypertension?","top_k":3,"use_llm":true,"include_trace":true}'
 ```
 
-Current steps are `query_planner`, `retriever`, `evidence_critic`, `safety_reviewer`, and `answer_composer`. The implementation is dependency-light today and can later be mapped to LangGraph nodes.
+Current steps are `query_planner`, `retriever`, `evidence_critic`, `safety_reviewer`, and `answer_composer`. Each step includes `latency_ms`, `input_summary`, `output_summary`, and metadata. The implementation is dependency-light today and can later be mapped to LangGraph nodes.
 
 
 ## Healthcare Safety Fields

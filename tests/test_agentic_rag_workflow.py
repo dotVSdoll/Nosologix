@@ -26,6 +26,7 @@ def test_agentic_rag_workflow_returns_trace_and_answer(tmp_path) -> None:
     response = workflow.run("What is hypertension?", top_k=2, min_score=0.0, use_llm=False)
 
     assert response.workflow_status == "completed"
+    assert response.total_latency_ms >= 0.0
     assert response.answer.citations
     assert [step.name for step in response.steps] == [
         "query_planner",
@@ -35,6 +36,10 @@ def test_agentic_rag_workflow_returns_trace_and_answer(tmp_path) -> None:
         "answer_composer",
     ]
     assert response.steps[0].metadata["intent"] == "medical_qa"
+    assert all(step.latency_ms >= 0.0 for step in response.steps)
+    assert all(step.input_summary for step in response.steps)
+    assert all(step.output_summary for step in response.steps)
+    assert "top_chunk=" in response.steps[1].output_summary
 
 
 def test_agentic_rag_workflow_can_hide_trace() -> None:
@@ -43,6 +48,7 @@ def test_agentic_rag_workflow_can_hide_trace() -> None:
     response = workflow.run("Does insurance cover this?", include_trace=False, use_llm=False)
 
     assert response.steps == []
+    assert response.total_latency_ms >= 0.0
     assert response.workflow_status == "needs_more_evidence"
     assert response.answer.evidence_status == "insufficient"
 
