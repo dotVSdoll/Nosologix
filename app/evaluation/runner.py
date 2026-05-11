@@ -4,6 +4,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 from statistics import mean
+from time import perf_counter
 from typing import Any
 
 from app.rag.embeddings import create_embedding_model
@@ -77,6 +78,7 @@ def run_eval(
         reranker=None,
     )
 
+    indexing_start = perf_counter()
     indexed_chunks = 0
     for document in dataset.documents:
         document_path = _resolve_dataset_path(dataset_file, document)
@@ -86,6 +88,7 @@ def run_eval(
             chunk_overlap=chunk_overlap,
         )
         indexed_chunks += len(indexed.chunks)
+    indexing_latency_ms = _elapsed_ms(indexing_start)
 
     answer_service = GroundedAnswerService(
         retrieval_service=retrieval_service,
@@ -101,6 +104,7 @@ def run_eval(
         "embedding_provider": embedding_provider,
         "indexed_documents": len(dataset.documents),
         "indexed_chunks": indexed_chunks,
+        "indexing_latency_ms": indexing_latency_ms,
         "case_count": len(case_results),
         "metrics": _summarize_metrics(case_results),
         "cases": case_results,
@@ -112,6 +116,7 @@ def _evaluate_case(
     answer_service: GroundedAnswerService,
     case: EvalCase,
 ) -> dict[str, Any]:
+    start_time = perf_counter()
     response = answer_service.answer(
         case.question,
         top_k=case.top_k,
@@ -127,6 +132,7 @@ def _evaluate_case(
     evidence_status_match = response.evidence_status == case.expected_evidence_status
     safety_match = response.risk_level.value == case.expected_risk_level
     passed = retrieval_hit and evidence_status_match and safety_match
+    latency_ms = _elapsed_ms(start_time)
 
     return {
         "id": case.id,
@@ -140,6 +146,9 @@ def _evaluate_case(
         "actual_risk_level": response.risk_level.value,
         "citation_count": len(response.citations),
         "top_score": _top_score(response),
+        "latency_ms": latency_ms,
+        "evidence_warning_count": len(response.evidence_warnings),
+        "safety_warning_count": len(response.safety_warnings),
         "provider": response.provider,
         "used_model": response.used_model,
     }
@@ -153,6 +162,10 @@ def _summarize_metrics(case_results: list[dict[str, Any]]) -> dict[str, Any]:
             "evidence_status_accuracy": 0.0,
             "safety_accuracy": 0.0,
             "average_top_score": 0.0,
+            "average_latency_ms": 0.0,
+            "p95_latency_ms": 0.0,
+            "average_citation_count": 0.0,
+            "no_evidence_rate": 0.0,
         }
 
     return {
@@ -169,6 +182,24 @@ def _summarize_metrics(case_results: list[dict[str, Any]]) -> dict[str, Any]:
             actual_key="actual_risk_level",
         ),
         "average_top_score": round(mean(result["top_score"] for result in case_results), 4),
+        "average_latency_ms": round(mean(result["latency_ms"] for result in case_results), 2),
+        "p95_latency_ms": _percentile(
+            [result["latency_ms"] for result in case_results],
+            percentile=95,
+        ),
+        "average_citation_count": round(
+            mean(result["citation_count"] for result in case_results),
+            2,
+        ),
+        "no_evidence_rate": round(
+            sum(
+                1
+                for result in case_results
+                if result["actual_evidence_status"] == "insufficient"
+            )
+            / len(case_results),
+            4,
+        ),
     }
 
 
@@ -201,3 +232,18 @@ def _match_rate(results: list[dict[str, Any]], *, expected_key: str, actual_key:
         / len(results),
         4,
     )
+
+
+def _elapsed_ms(start_time: float) -> float:
+    return round((perf_counter() - start_time) * 1000, 2)
+
+
+def _percentile(values: list[float], *, percentile: int) -> float:
+    if not values:
+        return 0.0
+    sorted_values = sorted(values)
+    index = min(
+        len(sorted_values) - 1,
+        max(0, round((percentile / 100) * (len(sorted_values) - 1))),
+    )
+    return round(sorted_values[index], 2)

@@ -49,6 +49,12 @@ def test_run_eval_returns_summary_metrics(tmp_path) -> None:
     report = run_eval(dataset_path, embedding_provider="hash", embedding_dimension=64)
 
     assert report["case_count"] == 2
+    assert report["indexing_latency_ms"] >= 0.0
+    assert "average_latency_ms" in report["metrics"]
+    assert "p95_latency_ms" in report["metrics"]
+    assert "average_citation_count" in report["metrics"]
+    assert "no_evidence_rate" in report["metrics"]
     assert report["metrics"]["evidence_status_accuracy"] == 1.0
     assert report["metrics"]["safety_accuracy"] == 1.0
+    assert all("latency_ms" in case for case in report["cases"])
     assert all(case["passed"] for case in report["cases"])

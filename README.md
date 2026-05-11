@@ -193,4 +193,4 @@ Run the lightweight offline eval suite:
 .\.venv\Scripts\python scripts\run_eval.py
 ```
 
-The default fixture checks retrieval hit rate, evidence status accuracy, and healthcare safety accuracy. Reports are written under `eval/reports/` and are ignored by Git.
+The default fixture checks retrieval hit rate, evidence status accuracy, healthcare safety accuracy, citation coverage, no-evidence rate, and per-case latency. Reports are written under `eval/reports/` and are ignored by Git.
