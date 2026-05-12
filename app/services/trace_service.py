@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from app.config import settings
-from app.schemas.agent import AgenticRagResponse
+from app.schemas.agent import AgenticRagResponse, AgentRunRecord
 
 
 class AgentTraceWriter:
@@ -32,11 +32,33 @@ class AgentTraceWriter:
         return run_id
 
 
+class AgentTraceReader:
+    def __init__(self, *, path: str | Path = "./data/traces/agent_runs.jsonl") -> None:
+        self.path = Path(path)
+
+    def tail(self, *, limit: int = 20) -> list[AgentRunRecord]:
+        if limit <= 0:
+            raise ValueError("limit must be greater than 0")
+        if not self.path.exists():
+            return []
+
+        records: list[AgentRunRecord] = []
+        for line in self.path.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            records.append(AgentRunRecord.model_validate(json.loads(line)))
+        return records[-limit:][::-1]
+
+
 def create_agent_trace_writer() -> AgentTraceWriter:
     return AgentTraceWriter(
         enabled=settings.agent_trace_enabled,
         path=settings.agent_trace_path,
     )
+
+
+def create_agent_trace_reader() -> AgentTraceReader:
+    return AgentTraceReader(path=settings.agent_trace_path)
 
 
 def _build_trace_record(*, run_id: str, response: AgenticRagResponse) -> dict[str, Any]:

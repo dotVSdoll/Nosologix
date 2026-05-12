@@ -2,7 +2,7 @@ import json
 
 from app.schemas.agent import AgenticRagResponse, AgentStep
 from app.schemas.answer import GroundedAnswerResponse
-from app.services.trace_service import AgentTraceWriter
+from app.services.trace_service import AgentTraceReader, AgentTraceWriter
 
 
 def _response() -> AgenticRagResponse:
@@ -57,3 +57,23 @@ def test_agent_trace_writer_skips_when_disabled(tmp_path) -> None:
 
     assert run_id is None
     assert not path.exists()
+
+
+def test_agent_trace_reader_returns_recent_runs_first(tmp_path) -> None:
+    path = tmp_path / "agent_runs.jsonl"
+    writer = AgentTraceWriter(enabled=True, path=path)
+    first_run_id = writer.write(_response())
+    second_run_id = writer.write(_response())
+    reader = AgentTraceReader(path=path)
+
+    runs = reader.tail(limit=1)
+
+    assert len(runs) == 1
+    assert runs[0].run_id == second_run_id
+    assert runs[0].run_id != first_run_id
+
+
+def test_agent_trace_reader_returns_empty_when_file_missing(tmp_path) -> None:
+    reader = AgentTraceReader(path=tmp_path / "missing.jsonl")
+
+    assert reader.tail(limit=10) == []

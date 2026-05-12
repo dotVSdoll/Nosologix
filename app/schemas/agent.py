@@ -25,3 +25,19 @@ class AgenticRagResponse(BaseModel):
     answer: GroundedAnswerResponse
     total_latency_ms: float = Field(default=0.0, ge=0.0)
     steps: list[AgentStep] = Field(default_factory=list)
+
+
+class AgentRunRecord(BaseModel):
+    run_id: str
+    created_at: str
+    question: str
+    workflow_status: str
+    workflow_engine: str
+    total_latency_ms: float = Field(ge=0.0)
+    answer: dict
+    steps: list[dict] = Field(default_factory=list)
+
+
+class AgentRunsResponse(BaseModel):
+    runs: list[AgentRunRecord]
+    count: int

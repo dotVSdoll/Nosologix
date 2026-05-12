@@ -171,6 +171,12 @@ AGENT_TRACE_ENABLED=true
 AGENT_TRACE_PATH=./data/traces/agent_runs.jsonl
 ```
 
+Read recent runs:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/agents/runs?limit=20
+```
+
 
 ## Healthcare Safety Fields
 

@@ -2,11 +2,23 @@ from fastapi import APIRouter, HTTPException, status
 
 from app.agents.langgraph_workflow import LangGraphAgenticRagWorkflow
 from app.agents.rag_workflow import AgenticRagWorkflow
-from app.schemas.agent import AgenticRagRequest, AgenticRagResponse
+from app.schemas.agent import AgenticRagRequest, AgenticRagResponse, AgentRunsResponse
 from app.services.app_state import retrieval_service
-from app.services.trace_service import create_agent_trace_writer
+from app.services.trace_service import create_agent_trace_reader, create_agent_trace_writer
 
 router = APIRouter(prefix="/agents", tags=["agents"])
+
+
+@router.get("/runs", response_model=AgentRunsResponse)
+def list_agent_runs(limit: int = 20) -> AgentRunsResponse:
+    if limit <= 0 or limit > 100:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="limit must be between 1 and 100",
+        )
+
+    runs = create_agent_trace_reader().tail(limit=limit)
+    return AgentRunsResponse(runs=runs, count=len(runs))
 
 
 @router.post("/rag", response_model=AgenticRagResponse)
