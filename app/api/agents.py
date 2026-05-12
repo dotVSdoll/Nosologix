@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, status
 
+from app.agents.langgraph_workflow import LangGraphAgenticRagWorkflow
 from app.agents.rag_workflow import AgenticRagWorkflow
 from app.schemas.agent import AgenticRagRequest, AgenticRagResponse
 from app.services.app_state import retrieval_service
@@ -16,7 +17,18 @@ def agentic_rag(request: AgenticRagRequest) -> AgenticRagResponse:
             detail="question cannot be blank",
         )
 
-    workflow = AgenticRagWorkflow(retrieval_service=retrieval_service)
+    workflow_engine = request.workflow_engine.strip().lower()
+    if workflow_engine not in {"linear", "langgraph"}:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="workflow_engine must be one of: linear, langgraph",
+        )
+
+    workflow = (
+        LangGraphAgenticRagWorkflow(retrieval_service=retrieval_service)
+        if workflow_engine == "langgraph"
+        else AgenticRagWorkflow(retrieval_service=retrieval_service)
+    )
     return workflow.run(
         question,
         top_k=request.top_k,

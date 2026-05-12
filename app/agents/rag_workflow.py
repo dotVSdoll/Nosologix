@@ -141,6 +141,7 @@ class AgenticRagWorkflow:
         return AgenticRagResponse(
             question=planned_query.original_question,
             workflow_status=_workflow_status(answer),
+            workflow_engine="linear",
             answer=answer,
             steps=steps if include_trace else [],
             total_latency_ms=_elapsed_ms(workflow_start),

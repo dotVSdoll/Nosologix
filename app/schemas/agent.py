@@ -15,11 +15,13 @@ class AgentStep(BaseModel):
 
 class AgenticRagRequest(GroundedAnswerRequest):
     include_trace: bool = True
+    workflow_engine: str = "linear"
 
 
 class AgenticRagResponse(BaseModel):
     question: str
     workflow_status: str
+    workflow_engine: str = "linear"
     answer: GroundedAnswerResponse
     total_latency_ms: float = Field(default=0.0, ge=0.0)
     steps: list[AgentStep] = Field(default_factory=list)

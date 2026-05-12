@@ -40,6 +40,7 @@ def test_agentic_rag_workflow_returns_trace_and_answer(tmp_path) -> None:
     response = workflow.run("What is hypertension?", top_k=2, min_score=0.0, use_llm=False)
 
     assert response.workflow_status == "completed"
+    assert response.workflow_engine == "linear"
     assert response.total_latency_ms >= 0.0
     assert response.answer.citations
     assert [step.name for step in response.steps] == [
