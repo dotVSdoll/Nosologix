@@ -12,6 +12,20 @@ def _retrieval_service() -> RetrievalService:
     )
 
 
+class CountingRetrievalService(RetrievalService):
+    def __init__(self) -> None:
+        super().__init__(
+            embedding_model=HashEmbeddingModel(dimension=64),
+            vector_store=InMemoryVectorStore(),
+            reranker=None,
+        )
+        self.search_count = 0
+
+    def search(self, query: str, *, top_k: int = 5):
+        self.search_count += 1
+        return super().search(query, top_k=top_k)
+
+
 def test_agentic_rag_workflow_returns_trace_and_answer(tmp_path) -> None:
     path = tmp_path / "health.md"
     path.write_text(
@@ -72,3 +86,16 @@ def test_agentic_rag_workflow_marks_high_risk_status(tmp_path) -> None:
 
     assert response.workflow_status == "completed_with_safety_warning"
     assert response.answer.risk_level == "high"
+
+
+def test_agentic_rag_workflow_reuses_retrieved_hits_for_answer(tmp_path) -> None:
+    path = tmp_path / "health.md"
+    path.write_text("Hypertension means high blood pressure.", encoding="utf-8")
+    retrieval = CountingRetrievalService()
+    retrieval.ingest_and_index_document(path, chunk_size=120, chunk_overlap=10)
+    workflow = AgenticRagWorkflow(retrieval_service=retrieval)
+
+    response = workflow.run("What is hypertension?", min_score=0.0, use_llm=False)
+
+    assert retrieval.search_count == 1
+    assert response.answer.citations

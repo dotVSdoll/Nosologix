@@ -117,7 +117,7 @@ class AgenticRagWorkflow:
         step_start = perf_counter()
         answer = self._answer(
             planned_query.original_question,
-            top_k=top_k,
+            hits=hits,
             min_score=min_score,
             min_citations=min_citations,
             use_llm=use_llm,
@@ -150,7 +150,7 @@ class AgenticRagWorkflow:
         self,
         question: str,
         *,
-        top_k: int,
+        hits: list[RetrievalHit],
         min_score: float,
         min_citations: int,
         use_llm: bool,
@@ -159,9 +159,9 @@ class AgenticRagWorkflow:
             retrieval_service=self.retrieval_service,
             llm_client=self.llm_client,
         )
-        return service.answer(
+        return service.answer_with_hits(
             question,
-            top_k=top_k,
+            hits=hits,
             min_score=min_score,
             min_citations=min_citations,
             use_llm=use_llm,

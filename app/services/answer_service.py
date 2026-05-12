@@ -45,6 +45,24 @@ class GroundedAnswerService:
     ) -> GroundedAnswerResponse:
         normalized_question = question.strip()
         hits = self.retrieval_service.search(normalized_question, top_k=top_k)
+        return self.answer_with_hits(
+            normalized_question,
+            hits=hits,
+            min_score=min_score,
+            min_citations=min_citations,
+            use_llm=use_llm,
+        )
+
+    def answer_with_hits(
+        self,
+        question: str,
+        *,
+        hits: list[RetrievalHit],
+        min_score: float = 0.05,
+        min_citations: int = 1,
+        use_llm: bool = True,
+    ) -> GroundedAnswerResponse:
+        normalized_question = question.strip()
         evidence_warnings = build_evidence_warnings(
             hits,
             min_score=min_score,

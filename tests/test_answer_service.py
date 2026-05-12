@@ -144,3 +144,27 @@ def test_grounded_answer_safety_uses_question_risk_not_unrelated_evidence(tmp_pa
 
     assert response.risk_level == RiskLevel.MEDIUM
     assert response.should_seek_doctor is True
+
+
+def test_grounded_answer_can_reuse_precomputed_hits(tmp_path, monkeypatch) -> None:
+    path = tmp_path / "health.md"
+    path.write_text("Hypertension means high blood pressure.", encoding="utf-8")
+    retrieval = _retrieval_service()
+    retrieval.ingest_and_index_document(path, chunk_size=90, chunk_overlap=10)
+    hits = retrieval.search("What is hypertension?", top_k=1)
+
+    def fail_search(*args, **kwargs):
+        raise AssertionError("search should not be called when hits are provided")
+
+    monkeypatch.setattr(retrieval, "search", fail_search)
+    service = GroundedAnswerService(retrieval_service=retrieval, llm_client=StubLLMClient())
+
+    response = service.answer_with_hits(
+        "What is hypertension?",
+        hits=hits,
+        min_score=0.0,
+        use_llm=False,
+    )
+
+    assert response.citations
+    assert response.retrieval_hits == hits
