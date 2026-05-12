@@ -39,6 +39,8 @@ class AgenticRagGraphState(TypedDict, total=False):
     hits: list[RetrievalHit]
     evidence_status: str
     evidence_warnings: list[str]
+    safety_risk_level: str
+    should_seek_doctor: bool
     answer: GroundedAnswerResponse
     steps: list[AgentStep]
     response: AgenticRagResponse
@@ -87,6 +89,7 @@ class LangGraphAgenticRagWorkflow(AgenticRagWorkflow):
         graph.add_node("evidence_critic", self._evidence_critic_node)
         graph.add_node("safety_reviewer", self._safety_reviewer_node)
         graph.add_node("abstain_composer", self._abstain_composer_node)
+        graph.add_node("safety_guardrail_composer", self._safety_guardrail_composer_node)
         graph.add_node("answer_composer", self._answer_composer_node)
         graph.add_edge(START, "query_planner")
         graph.add_edge("query_planner", "retriever")
@@ -100,7 +103,15 @@ class LangGraphAgenticRagWorkflow(AgenticRagWorkflow):
             },
         )
         graph.add_edge("abstain_composer", END)
-        graph.add_edge("safety_reviewer", "answer_composer")
+        graph.add_conditional_edges(
+            "safety_reviewer",
+            _route_after_safety,
+            {
+                "answer_composer": "answer_composer",
+                "safety_guardrail_composer": "safety_guardrail_composer",
+            },
+        )
+        graph.add_edge("safety_guardrail_composer", END)
         graph.add_edge("answer_composer", END)
         return graph.compile()
 
@@ -181,7 +192,11 @@ class LangGraphAgenticRagWorkflow(AgenticRagWorkflow):
                 "matched_rule_count": len(safety.matched_rules),
             },
         )
-        return {"steps": [*state.get("steps", []), step]}
+        return {
+            "safety_risk_level": safety.risk_level.value,
+            "should_seek_doctor": safety.should_seek_doctor,
+            "steps": [*state.get("steps", []), step],
+        }
 
     def _abstain_composer_node(self, state: AgenticRagGraphState) -> dict[str, Any]:
         step_start = perf_counter()
@@ -209,6 +224,48 @@ class LangGraphAgenticRagWorkflow(AgenticRagWorkflow):
         response = AgenticRagResponse(
             question=state["question"],
             workflow_status="needs_more_evidence",
+            workflow_engine="langgraph",
+            answer=answer,
+            steps=steps if state["include_trace"] else [],
+            total_latency_ms=_elapsed_ms(state["workflow_start"]),
+        )
+        return {
+            "answer": answer,
+            "response": response,
+            "steps": steps,
+        }
+
+    def _safety_guardrail_composer_node(self, state: AgenticRagGraphState) -> dict[str, Any]:
+        step_start = perf_counter()
+        answer = self._answer(
+            state["question"],
+            hits=state["hits"],
+            min_score=state["min_score"],
+            min_citations=state["min_citations"],
+            use_llm=False,
+        )
+        step = AgentStep(
+            name="safety_guardrail_composer",
+            status="completed",
+            summary="Composed safety-first answer for a high-risk medical question.",
+            input_summary=(
+                f"risk_level={state['safety_risk_level']}, "
+                f"{len(answer.citations)} citation(s)"
+            ),
+            output_summary=_summarize_text(answer.answer),
+            latency_ms=_elapsed_ms(step_start),
+            metadata={
+                "confidence": answer.confidence,
+                "citation_count": len(answer.citations),
+                "risk_level": state["safety_risk_level"],
+                "should_seek_doctor": state["should_seek_doctor"],
+                "used_llm": False,
+            },
+        )
+        steps = [*state.get("steps", []), step]
+        response = AgenticRagResponse(
+            question=state["question"],
+            workflow_status="completed_with_safety_warning",
             workflow_engine="langgraph",
             answer=answer,
             steps=steps if state["include_trace"] else [],
@@ -262,3 +319,9 @@ def _route_after_evidence(state: AgenticRagGraphState) -> str:
     if state["evidence_status"] == "insufficient":
         return "abstain_composer"
     return "safety_reviewer"
+
+
+def _route_after_safety(state: AgenticRagGraphState) -> str:
+    if state["safety_risk_level"] in {"high", "emergency"}:
+        return "safety_guardrail_composer"
+    return "answer_composer"

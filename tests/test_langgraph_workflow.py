@@ -70,3 +70,33 @@ def test_langgraph_agentic_rag_workflow_routes_insufficient_evidence_to_abstain(
     ]
     assert "safety_reviewer" not in {step.name for step in response.steps}
     assert "answer_composer" not in {step.name for step in response.steps}
+
+
+def test_langgraph_agentic_rag_workflow_routes_high_risk_to_guardrail(tmp_path) -> None:
+    path = tmp_path / "meds.md"
+    path.write_text(
+        "Medication dose decisions depend on age, weight, allergies, and diagnosis.",
+        encoding="utf-8",
+    )
+    retrieval = CountingRetrievalService()
+    retrieval.ingest_and_index_document(path, chunk_size=120, chunk_overlap=10)
+    workflow = LangGraphAgenticRagWorkflow(retrieval_service=retrieval)
+
+    response = workflow.run(
+        "How much aspirin should I take as a dose?",
+        min_score=0.0,
+        use_llm=True,
+    )
+
+    assert response.workflow_status == "completed_with_safety_warning"
+    assert response.answer.provider == "template"
+    assert response.answer.risk_level == "high"
+    assert [step.name for step in response.steps] == [
+        "query_planner",
+        "retriever",
+        "evidence_critic",
+        "safety_reviewer",
+        "safety_guardrail_composer",
+    ]
+    assert "answer_composer" not in {step.name for step in response.steps}
+    assert response.steps[-1].metadata["used_llm"] is False
