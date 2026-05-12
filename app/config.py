@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     reranker_provider: str = "none"
     reranker_model: str = "BAAI/bge-reranker-v2-m3"
     reranker_use_fp16: bool = False
+    agent_trace_enabled: bool = True
+    agent_trace_path: str = "./data/traces/agent_runs.jsonl"
     llm_provider: str = "template"
     llm_model: str = "template-local"
     qwen_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"

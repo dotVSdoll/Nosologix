@@ -4,6 +4,7 @@ from app.agents.langgraph_workflow import LangGraphAgenticRagWorkflow
 from app.agents.rag_workflow import AgenticRagWorkflow
 from app.schemas.agent import AgenticRagRequest, AgenticRagResponse
 from app.services.app_state import retrieval_service
+from app.services.trace_service import create_agent_trace_writer
 
 router = APIRouter(prefix="/agents", tags=["agents"])
 
@@ -29,7 +30,7 @@ def agentic_rag(request: AgenticRagRequest) -> AgenticRagResponse:
         if workflow_engine == "langgraph"
         else AgenticRagWorkflow(retrieval_service=retrieval_service)
     )
-    return workflow.run(
+    response = workflow.run(
         question,
         top_k=request.top_k,
         min_score=request.min_score,
@@ -37,3 +38,5 @@ def agentic_rag(request: AgenticRagRequest) -> AgenticRagResponse:
         use_llm=request.use_llm,
         include_trace=request.include_trace,
     )
+    create_agent_trace_writer().write(response)
+    return response

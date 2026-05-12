@@ -9,6 +9,8 @@ Thumbs.db
 /data/*.db
 /data/vectorstore/*
 !/data/vectorstore/.gitkeep
+/data/traces/*
+!/data/traces/.gitkeep
 /eval/reports/*
 !/eval/reports/.gitkeep
 

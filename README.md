@@ -164,6 +164,13 @@ Invoke-RestMethod -Method Post http://127.0.0.1:8000/agents/rag `
 
 Current steps are `query_planner`, `retriever`, `evidence_critic`, `safety_reviewer`, and `answer_composer`. Each step includes `latency_ms`, `input_summary`, `output_summary`, and metadata. Set `workflow_engine` to `linear` for the dependency-light orchestrator or `langgraph` for the LangGraph-backed graph. The LangGraph engine uses a conditional edge after `evidence_critic`: insufficient evidence routes directly to `abstain_composer`.
 
+Agent runs are appended to JSONL for local audit/demo by default:
+
+```env
+AGENT_TRACE_ENABLED=true
+AGENT_TRACE_PATH=./data/traces/agent_runs.jsonl
+```
+
 
 ## Healthcare Safety Fields
 
