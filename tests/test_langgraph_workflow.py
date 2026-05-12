@@ -53,3 +53,20 @@ def test_langgraph_agentic_rag_workflow_can_hide_trace() -> None:
     assert response.workflow_engine == "langgraph"
     assert response.steps == []
     assert response.workflow_status == "needs_more_evidence"
+
+
+def test_langgraph_agentic_rag_workflow_routes_insufficient_evidence_to_abstain() -> None:
+    workflow = LangGraphAgenticRagWorkflow(retrieval_service=CountingRetrievalService())
+
+    response = workflow.run("Does insurance cover this?", use_llm=True, include_trace=True)
+
+    assert response.workflow_status == "needs_more_evidence"
+    assert response.answer.provider == "none"
+    assert [step.name for step in response.steps] == [
+        "query_planner",
+        "retriever",
+        "evidence_critic",
+        "abstain_composer",
+    ]
+    assert "safety_reviewer" not in {step.name for step in response.steps}
+    assert "answer_composer" not in {step.name for step in response.steps}

@@ -86,11 +86,20 @@ class LangGraphAgenticRagWorkflow(AgenticRagWorkflow):
         graph.add_node("retriever", self._retriever_node)
         graph.add_node("evidence_critic", self._evidence_critic_node)
         graph.add_node("safety_reviewer", self._safety_reviewer_node)
+        graph.add_node("abstain_composer", self._abstain_composer_node)
         graph.add_node("answer_composer", self._answer_composer_node)
         graph.add_edge(START, "query_planner")
         graph.add_edge("query_planner", "retriever")
         graph.add_edge("retriever", "evidence_critic")
-        graph.add_edge("evidence_critic", "safety_reviewer")
+        graph.add_conditional_edges(
+            "evidence_critic",
+            _route_after_evidence,
+            {
+                "safety_reviewer": "safety_reviewer",
+                "abstain_composer": "abstain_composer",
+            },
+        )
+        graph.add_edge("abstain_composer", END)
         graph.add_edge("safety_reviewer", "answer_composer")
         graph.add_edge("answer_composer", END)
         return graph.compile()
@@ -174,6 +183,43 @@ class LangGraphAgenticRagWorkflow(AgenticRagWorkflow):
         )
         return {"steps": [*state.get("steps", []), step]}
 
+    def _abstain_composer_node(self, state: AgenticRagGraphState) -> dict[str, Any]:
+        step_start = perf_counter()
+        answer = self._answer(
+            state["question"],
+            hits=state["hits"],
+            min_score=state["min_score"],
+            min_citations=state["min_citations"],
+            use_llm=False,
+        )
+        step = AgentStep(
+            name="abstain_composer",
+            status="completed",
+            summary="Composed abstain answer because evidence was insufficient.",
+            input_summary=f"{len(state['hits'])} hit(s), evidence_status=insufficient",
+            output_summary=_summarize_text(answer.answer),
+            latency_ms=_elapsed_ms(step_start),
+            metadata={
+                "confidence": answer.confidence,
+                "citation_count": len(answer.citations),
+                "used_llm": False,
+            },
+        )
+        steps = [*state.get("steps", []), step]
+        response = AgenticRagResponse(
+            question=state["question"],
+            workflow_status="needs_more_evidence",
+            workflow_engine="langgraph",
+            answer=answer,
+            steps=steps if state["include_trace"] else [],
+            total_latency_ms=_elapsed_ms(state["workflow_start"]),
+        )
+        return {
+            "answer": answer,
+            "response": response,
+            "steps": steps,
+        }
+
     def _answer_composer_node(self, state: AgenticRagGraphState) -> dict[str, Any]:
         step_start = perf_counter()
         answer = self._answer(
@@ -210,3 +256,9 @@ class LangGraphAgenticRagWorkflow(AgenticRagWorkflow):
             "response": response,
             "steps": steps,
         }
+
+
+def _route_after_evidence(state: AgenticRagGraphState) -> str:
+    if state["evidence_status"] == "insufficient":
+        return "abstain_composer"
+    return "safety_reviewer"

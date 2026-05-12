@@ -162,7 +162,7 @@ Invoke-RestMethod -Method Post http://127.0.0.1:8000/agents/rag `
   -Body '{"question":"What is hypertension?","top_k":3,"use_llm":true,"include_trace":true,"workflow_engine":"langgraph"}'
 ```
 
-Current steps are `query_planner`, `retriever`, `evidence_critic`, `safety_reviewer`, and `answer_composer`. Each step includes `latency_ms`, `input_summary`, `output_summary`, and metadata. Set `workflow_engine` to `linear` for the dependency-light orchestrator or `langgraph` for the LangGraph-backed graph.
+Current steps are `query_planner`, `retriever`, `evidence_critic`, `safety_reviewer`, and `answer_composer`. Each step includes `latency_ms`, `input_summary`, `output_summary`, and metadata. Set `workflow_engine` to `linear` for the dependency-light orchestrator or `langgraph` for the LangGraph-backed graph. The LangGraph engine uses a conditional edge after `evidence_critic`: insufficient evidence routes directly to `abstain_composer`.
 
 
 ## Healthcare Safety Fields
