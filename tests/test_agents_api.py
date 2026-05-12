@@ -56,6 +56,40 @@ def test_list_agent_runs_api_returns_recent_runs(monkeypatch, tmp_path) -> None:
     assert payload["runs"][0]["question"] == "Does insurance cover this?"
 
 
+def test_get_agent_run_api_returns_run_by_id(monkeypatch, tmp_path) -> None:
+    trace_path = tmp_path / "agent_runs.jsonl"
+    monkeypatch.setattr("app.config.settings.agent_trace_enabled", True)
+    monkeypatch.setattr("app.config.settings.agent_trace_path", str(trace_path))
+    create_response = client.post(
+        "/agents/rag",
+        json={
+            "question": "What is hypertension?",
+            "top_k": 2,
+            "use_llm": False,
+            "include_trace": True,
+            "workflow_engine": "linear",
+        },
+    )
+    assert create_response.status_code == 200
+    runs_response = client.get("/agents/runs?limit=1")
+    run_id = runs_response.json()["runs"][0]["run_id"]
+
+    response = client.get(f"/agents/runs/{run_id}")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["run_id"] == run_id
+    assert payload["question"] == "What is hypertension?"
+
+
+def test_get_agent_run_api_returns_404_for_missing_run(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr("app.config.settings.agent_trace_path", str(tmp_path / "missing.jsonl"))
+
+    response = client.get("/agents/runs/not-found")
+
+    assert response.status_code == 404
+
+
 def test_list_agent_runs_api_rejects_invalid_limit() -> None:
     response = client.get("/agents/runs?limit=0")
 

@@ -2,7 +2,12 @@ from fastapi import APIRouter, HTTPException, status
 
 from app.agents.langgraph_workflow import LangGraphAgenticRagWorkflow
 from app.agents.rag_workflow import AgenticRagWorkflow
-from app.schemas.agent import AgenticRagRequest, AgenticRagResponse, AgentRunsResponse
+from app.schemas.agent import (
+    AgenticRagRequest,
+    AgenticRagResponse,
+    AgentRunRecord,
+    AgentRunsResponse,
+)
 from app.services.app_state import retrieval_service
 from app.services.trace_service import create_agent_trace_reader, create_agent_trace_writer
 
@@ -19,6 +24,17 @@ def list_agent_runs(limit: int = 20) -> AgentRunsResponse:
 
     runs = create_agent_trace_reader().tail(limit=limit)
     return AgentRunsResponse(runs=runs, count=len(runs))
+
+
+@router.get("/runs/{run_id}", response_model=AgentRunRecord)
+def get_agent_run(run_id: str) -> AgentRunRecord:
+    run = create_agent_trace_reader().get(run_id)
+    if run is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="agent run not found",
+        )
+    return run
 
 
 @router.post("/rag", response_model=AgenticRagResponse)

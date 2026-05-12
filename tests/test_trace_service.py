@@ -77,3 +77,25 @@ def test_agent_trace_reader_returns_empty_when_file_missing(tmp_path) -> None:
     reader = AgentTraceReader(path=tmp_path / "missing.jsonl")
 
     assert reader.tail(limit=10) == []
+
+
+def test_agent_trace_reader_gets_run_by_id(tmp_path) -> None:
+    path = tmp_path / "agent_runs.jsonl"
+    writer = AgentTraceWriter(enabled=True, path=path)
+    run_id = writer.write(_response())
+    reader = AgentTraceReader(path=path)
+
+    run = reader.get(run_id)
+
+    assert run is not None
+    assert run.run_id == run_id
+    assert run.question == "What is hypertension?"
+
+
+def test_agent_trace_reader_returns_none_for_missing_run(tmp_path) -> None:
+    path = tmp_path / "agent_runs.jsonl"
+    writer = AgentTraceWriter(enabled=True, path=path)
+    writer.write(_response())
+    reader = AgentTraceReader(path=path)
+
+    assert reader.get("missing") is None

@@ -175,6 +175,7 @@ Read recent runs:
 
 ```powershell
 Invoke-RestMethod http://127.0.0.1:8000/agents/runs?limit=20
+Invoke-RestMethod http://127.0.0.1:8000/agents/runs/{run_id}
 ```
 
 

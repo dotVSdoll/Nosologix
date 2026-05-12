@@ -39,6 +39,21 @@ class AgentTraceReader:
     def tail(self, *, limit: int = 20) -> list[AgentRunRecord]:
         if limit <= 0:
             raise ValueError("limit must be greater than 0")
+
+        records = self._read_records()
+        return records[-limit:][::-1]
+
+    def get(self, run_id: str) -> AgentRunRecord | None:
+        normalized_run_id = run_id.strip()
+        if not normalized_run_id:
+            return None
+
+        for record in reversed(self._read_records()):
+            if record.run_id == normalized_run_id:
+                return record
+        return None
+
+    def _read_records(self) -> list[AgentRunRecord]:
         if not self.path.exists():
             return []
 
@@ -47,7 +62,7 @@ class AgentTraceReader:
             if not line.strip():
                 continue
             records.append(AgentRunRecord.model_validate(json.loads(line)))
-        return records[-limit:][::-1]
+        return records
 
 
 def create_agent_trace_writer() -> AgentTraceWriter:
