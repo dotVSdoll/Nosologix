@@ -2,9 +2,18 @@
 
 Healthcare Agentic RAG platform for interview-ready engineering practice.
 
+## Highlights
+
+- Agentic RAG workflow: `query_planner -> retriever -> evidence_critic -> safety_reviewer -> composer`
+- LangGraph conditional routing for insufficient evidence and high-risk healthcare questions
+- Grounded answers with citations, evidence guardrails, safety fields, and Qwen integration
+- Local model path: BGE-M3 embeddings, BGE reranker, Chroma persistent vector store
+- Observability: JSONL run traces plus `/agents/runs` and `/agents/runs/{run_id}`
+- Demo-ready delivery: browser UI, draw.io architecture diagram, interview guide, CI
+
 ## Current Phase
 
-Phase 4.1: interview-ready healthcare Agentic RAG. The project now supports local ingestion, configurable embeddings, Chroma retrieval, reranking, grounded answers, healthcare safety fields, LangGraph branches, run trace APIs, a draw.io architecture diagram, a browser demo UI, and interview/demo materials.
+Phase 4.2: delivery-ready healthcare Agentic RAG. The project now supports local ingestion, configurable embeddings, Chroma retrieval, reranking, grounded answers, healthcare safety fields, LangGraph branches, run trace APIs, a draw.io architecture diagram, a browser demo UI, interview/demo materials, and GitHub Actions CI.
 
 ## Quick Start
 
@@ -29,6 +38,7 @@ The page can run `/agents/rag`, render grounded citations, display each agent st
 - Notes: `docs/architecture.md`
 - Editable draw.io diagram: `docs/diagrams/agentic-rag-architecture.drawio`
 - Interview guide: `docs/interview_guide.md`
+- CI workflow: `.github/workflows/ci.yml`
 
 ## Demo Script
 
