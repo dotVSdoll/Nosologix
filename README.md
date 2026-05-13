@@ -4,7 +4,7 @@ Healthcare Agentic RAG platform for interview-ready engineering practice.
 
 ## Current Phase
 
-Phase 4.0: demo-ready healthcare Agentic RAG. The project now supports local ingestion, configurable embeddings, Chroma retrieval, reranking, grounded answers, healthcare safety fields, LangGraph branches, run trace APIs, a draw.io architecture diagram, and a browser demo UI.
+Phase 4.1: interview-ready healthcare Agentic RAG. The project now supports local ingestion, configurable embeddings, Chroma retrieval, reranking, grounded answers, healthcare safety fields, LangGraph branches, run trace APIs, a draw.io architecture diagram, a browser demo UI, and interview/demo materials.
 
 ## Quick Start
 
@@ -28,6 +28,23 @@ The page can run `/agents/rag`, render grounded citations, display each agent st
 
 - Notes: `docs/architecture.md`
 - Editable draw.io diagram: `docs/diagrams/agentic-rag-architecture.drawio`
+- Interview guide: `docs/interview_guide.md`
+
+## Demo Script
+
+Start the API first:
+
+```powershell
+.\.venv\Scripts\python -m uvicorn app.main:app --reload
+```
+
+Then run the local end-to-end demo:
+
+```powershell
+.\.venv\Scripts\python scripts\demo_smoke.py
+```
+
+Use `--use-llm` when your Qwen key and quota are available.
 
 ## Minimal RAG Retrieval Flow
 
