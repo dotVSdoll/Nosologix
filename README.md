@@ -4,7 +4,7 @@ Healthcare Agentic RAG platform for interview-ready engineering practice.
 
 ## Current Phase
 
-Phase 2: grounded healthcare RAG. The project now supports local ingestion, configurable embeddings, retrieval APIs, grounded answers, healthcare safety fields, evidence quality guard, and safe LLM diagnostics.
+Phase 3.9: traceable healthcare Agentic RAG. The project now supports local ingestion, configurable embeddings, Chroma retrieval, reranking, grounded answers, healthcare safety fields, LangGraph branches, run trace APIs, and a draw.io architecture diagram.
 
 ## Quick Start
 
@@ -15,6 +15,11 @@ python -m venv .venv
 ```
 
 Health check: `GET /health`
+
+## Architecture
+
+- Notes: `docs/architecture.md`
+- Editable draw.io diagram: `docs/diagrams/agentic-rag-architecture.drawio`
 
 ## Minimal RAG Retrieval Flow
 
