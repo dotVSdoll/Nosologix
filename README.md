@@ -4,7 +4,7 @@ Healthcare Agentic RAG platform for interview-ready engineering practice.
 
 ## Current Phase
 
-Phase 3.9: traceable healthcare Agentic RAG. The project now supports local ingestion, configurable embeddings, Chroma retrieval, reranking, grounded answers, healthcare safety fields, LangGraph branches, run trace APIs, and a draw.io architecture diagram.
+Phase 4.0: demo-ready healthcare Agentic RAG. The project now supports local ingestion, configurable embeddings, Chroma retrieval, reranking, grounded answers, healthcare safety fields, LangGraph branches, run trace APIs, a draw.io architecture diagram, and a browser demo UI.
 
 ## Quick Start
 
@@ -15,6 +15,14 @@ python -m venv .venv
 ```
 
 Health check: `GET /health`
+
+Demo UI:
+
+```text
+http://127.0.0.1:8000/demo
+```
+
+The page can run `/agents/rag`, render grounded citations, display each agent step, and open recent run details from `/agents/runs`.
 
 ## Architecture
 
