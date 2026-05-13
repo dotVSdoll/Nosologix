@@ -15,4 +15,4 @@ Thumbs.db
 !/eval/reports/.gitkeep
 
 *.egg-info/
-
+logs/
