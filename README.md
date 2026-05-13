@@ -2,6 +2,8 @@
 
 Healthcare Agentic RAG platform for interview-ready engineering practice.
 
+中文版说明：`README.zh-CN.md`
+
 ## Highlights
 
 - Agentic RAG workflow: `query_planner -> retriever -> evidence_critic -> safety_reviewer -> composer`
