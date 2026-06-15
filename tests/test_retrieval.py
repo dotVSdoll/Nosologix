@@ -1,0 +1,163 @@
+import pytest
+
+from app.rag.embeddings import HashEmbeddingModel, cosine_similarity
+from app.rag.rerankers import KeywordOverlapReranker
+from app.rag.vector_store import (
+    ChromaVectorStore,
+    InMemoryVectorStore,
+    VectorStoreProviderError,
+    create_vector_store,
+)
+from app.schemas.chunk import DocumentChunk
+from app.schemas.retrieval import RetrievalHit
+from app.services.retrieval_service import RetrievalService, rerank_hits
+
+
+def _chunk(chunk_id: str, content: str) -> DocumentChunk:
+    return DocumentChunk(
+        id=chunk_id,
+        document_id="doc1",
+        content=content,
+        chunk_index=int(chunk_id[-1]),
+        start_char=0,
+        end_char=len(content),
+        metadata={"source": "unit-test"},
+    )
+
+
+def test_hash_embedding_is_deterministic_and_normalized() -> None:
+    model = HashEmbeddingModel(dimension=32)
+
+    first = model.embed_text("hypertension blood pressure")
+    second = model.embed_text("hypertension blood pressure")
+
+    assert first == second
+    assert len(first) == 32
+    assert cosine_similarity(first, second) == pytest.approx(1.0)
+
+
+def test_in_memory_vector_store_returns_most_relevant_chunk() -> None:
+    model = HashEmbeddingModel(dimension=64)
+    store = InMemoryVectorStore()
+    chunks = [
+        _chunk("chunk0", "blood pressure hypertension salt exercise"),
+        _chunk("chunk1", "software deployment docker container"),
+    ]
+    store.upsert_many(chunks, model.embed_documents(chunk.content for chunk in chunks))
+
+    hits = store.search(model.embed_text("hypertension pressure"), top_k=2)
+
+    assert hits[0].chunk.id == "chunk0"
+    assert hits[0].rank == 1
+    assert hits[0].score >= hits[1].score
+    assert store.count() == 2
+
+
+def test_retrieval_service_ingests_indexes_and_searches(tmp_path) -> None:
+    path = tmp_path / "health.md"
+    path.write_text(
+        "# Health notes\n\n"
+        "Hypertension is related to blood pressure and salt intake.\n\n"
+        "Docker images are used for software deployment.\n",
+        encoding="utf-8",
+    )
+    service = RetrievalService(
+        embedding_model=HashEmbeddingModel(dimension=64),
+        vector_store=InMemoryVectorStore(),
+    )
+
+    ingested = service.ingest_and_index_document(path, chunk_size=80, chunk_overlap=10)
+    hits = service.search("blood pressure hypertension", top_k=1)
+
+    assert len(ingested.chunks) >= 2
+    assert hits[0].chunk.document_id == ingested.document.id
+    assert "Hypertension" in hits[0].chunk.content or "blood pressure" in hits[0].chunk.content
+
+
+def test_vector_store_rejects_invalid_inputs() -> None:
+    store = InMemoryVectorStore()
+    with pytest.raises(ValueError):
+        store.search([0.1], top_k=0)
+    with pytest.raises(ValueError):
+        store.upsert_many([_chunk("chunk0", "content")], [])
+
+
+def test_rerank_hits_preserves_retrieval_score_and_updates_rank() -> None:
+    hits = [
+        RetrievalHit(chunk=_chunk("chunk0", "software deployment docker"), score=0.9, rank=1),
+        RetrievalHit(chunk=_chunk("chunk1", "blood pressure hypertension"), score=0.2, rank=2),
+    ]
+
+    reranked = rerank_hits(
+        query="hypertension blood pressure",
+        hits=hits,
+        reranker=KeywordOverlapReranker(),
+    )
+
+    assert reranked[0].chunk.id == "chunk1"
+    assert reranked[0].rank == 1
+    assert reranked[0].score == 0.2
+    assert reranked[0].retrieval_score == 0.2
+    assert reranked[0].rerank_score is not None
+
+
+def test_create_vector_store_defaults_to_in_memory(tmp_path) -> None:
+    store = create_vector_store(
+        provider="memory",
+        persist_path=tmp_path,
+        collection_name="test_chunks",
+    )
+
+    assert isinstance(store, InMemoryVectorStore)
+
+
+def test_create_vector_store_rejects_unknown_provider(tmp_path) -> None:
+    with pytest.raises(VectorStoreProviderError):
+        create_vector_store(
+            provider="unknown",
+            persist_path=tmp_path,
+            collection_name="test_chunks",
+        )
+
+
+def test_chroma_vector_store_reports_missing_optional_dependency(tmp_path, monkeypatch) -> None:
+    real_import = __import__
+
+    def fake_import(name, *args, **kwargs):
+        if name == "chromadb":
+            raise ImportError("missing chromadb")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr("builtins.__import__", fake_import)
+
+    with pytest.raises(VectorStoreProviderError, match="ChromaDB"):
+        create_vector_store(
+            provider="chroma",
+            persist_path=tmp_path,
+            collection_name="test_chunks",
+        )
+
+
+def test_chroma_vector_store_persists_chunks_across_instances(tmp_path) -> None:
+    pytest.importorskip("chromadb")
+    model = HashEmbeddingModel(dimension=64)
+    chunks = [
+        _chunk("chunk0", "blood pressure hypertension salt exercise"),
+        _chunk("chunk1", "software deployment docker container"),
+    ]
+    first_store = ChromaVectorStore(
+        persist_path=tmp_path,
+        collection_name="test_chunks",
+    )
+    first_store.clear()
+    first_store.upsert_many(chunks, model.embed_documents(chunk.content for chunk in chunks))
+
+    second_store = ChromaVectorStore(
+        persist_path=tmp_path,
+        collection_name="test_chunks",
+    )
+    hits = second_store.search(model.embed_text("hypertension pressure"), top_k=2)
+
+    assert second_store.count() == 2
+    assert hits[0].chunk.id == "chunk0"
+    assert hits[0].chunk.metadata["source"] == "unit-test"

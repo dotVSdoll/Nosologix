@@ -22,6 +22,10 @@ rag = [
   "langgraph>=0.2.0",
   "chromadb>=0.5.0",
 ]
+embedding = [
+  "FlagEmbedding>=1.3.0",
+  "transformers<5",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -36,5 +40,5 @@ select = ["E", "F", "I", "UP", "B"]
 requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools]
-packages = ["app"]
+[tool.setuptools.packages.find]
+include = ["app*"]

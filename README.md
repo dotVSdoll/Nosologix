@@ -1,12 +1,23 @@
-﻿# Med RAG Agent
+# Med RAG Agent
 
-医疗健康场景的 Agentic RAG 多智能体服务平台。
+Healthcare Agentic RAG platform for interview-ready engineering practice.
 
-## 当前阶段
+中文版说明：`README.zh-CN.md`
 
-Phase 0：项目骨架。
+## Highlights
 
-## 快速启动
+- Agentic RAG workflow: `query_planner -> retriever -> evidence_critic -> safety_reviewer -> composer`
+- LangGraph conditional routing for insufficient evidence and high-risk healthcare questions
+- Grounded answers with citations, evidence guardrails, safety fields, and Qwen integration
+- Local model path: BGE-M3 embeddings, BGE reranker, Chroma persistent vector store
+- Observability: JSONL run traces plus `/agents/runs` and `/agents/runs/{run_id}`
+- Demo-ready delivery: browser UI, draw.io architecture diagram, interview guide, CI
+
+## Current Phase
+
+Phase 4.2: delivery-ready healthcare Agentic RAG. The project now supports local ingestion, configurable embeddings, Chroma retrieval, reranking, grounded answers, healthcare safety fields, LangGraph branches, run trace APIs, a draw.io architecture diagram, a browser demo UI, interview/demo materials, and GitHub Actions CI.
+
+## Quick Start
 
 ```powershell
 python -m venv .venv
@@ -14,4 +25,241 @@ python -m venv .venv
 .\.venv\Scripts\python -m uvicorn app.main:app --reload
 ```
 
-健康检查：`GET /health`
+Health check: `GET /health`
+
+Demo UI:
+
+```text
+http://127.0.0.1:8000/demo
+```
+
+The page can run `/agents/rag`, render grounded citations, display each agent step, and open recent run details from `/agents/runs`.
+
+## Architecture
+
+- Notes: `docs/architecture.md`
+- Editable draw.io diagram: `docs/diagrams/agentic-rag-architecture.drawio`
+- Interview guide: `docs/interview_guide.md`
+- CI workflow: `.github/workflows/ci.yml`
+
+## Demo Script
+
+Start the API first:
+
+```powershell
+.\.venv\Scripts\python -m uvicorn app.main:app --reload
+```
+
+Then run the local end-to-end demo:
+
+```powershell
+.\.venv\Scripts\python scripts\demo_smoke.py
+```
+
+Use `--use-llm` when your Qwen key and quota are available.
+
+## Minimal RAG Retrieval Flow
+
+Ingest a local document:
+
+```powershell
+Invoke-RestMethod -Method Post http://127.0.0.1:8000/documents/ingest-local `
+  -ContentType "application/json" `
+  -Body '{"path":"E:/Agentpj/med-rag-agent/data/samples/health_sample.md","chunk_size":300,"chunk_overlap":50}'
+```
+
+Search indexed chunks:
+
+```powershell
+Invoke-RestMethod -Method Post http://127.0.0.1:8000/retrieval/search `
+  -ContentType "application/json" `
+  -Body '{"query":"blood pressure hypertension","top_k":3}'
+```
+
+## Notes
+
+`HashEmbeddingModel` is a deterministic local embedding used for offline tests and pipeline validation. Later phases will add a real embedding provider and ChromaDB or pgvector.
+
+
+## Embedding Providers
+
+Default local tests use deterministic hash embeddings:
+
+```env
+EMBEDDING_PROVIDER=hash
+EMBEDDING_MODEL=hash-local
+EMBEDDING_DIMENSION=128
+```
+
+To enable BGE-M3 later, install optional embedding dependencies and update `.env`:
+
+```powershell
+.\.venv\Scripts\python -m pip install -e .[embedding]
+```
+
+```env
+EMBEDDING_PROVIDER=bge-m3
+EMBEDDING_MODEL=BAAI/bge-m3
+EMBEDDING_DIMENSION=1024
+EMBEDDING_DEVICE=cpu
+EMBEDDING_USE_FP16=false
+```
+
+Keep `hash` for CI and offline tests; use `bge-m3` for real retrieval quality.
+
+
+## Reranker
+
+Reranking is disabled by default:
+
+```env
+RERANKER_PROVIDER=none
+RERANKER_MODEL=BAAI/bge-reranker-v2-m3
+RERANKER_USE_FP16=false
+```
+
+For real retrieval quality, install the optional FlagEmbedding dependency and enable BGE reranker:
+
+```powershell
+.\.venv\Scripts\python -m pip install -e .[embedding]
+```
+
+```env
+RERANKER_PROVIDER=bge-reranker
+RERANKER_MODEL=BAAI/bge-reranker-v2-m3
+RERANKER_USE_FP16=true
+```
+
+The retriever sorts hits by `rerank_score` when enabled, while `score` remains the original retrieval score used by the evidence guard.
+
+
+## Vector Store
+
+Default development mode uses an in-memory vector store:
+
+```env
+VECTOR_STORE_PROVIDER=memory
+VECTOR_STORE_PATH=./data/vectorstore
+VECTOR_STORE_COLLECTION=med_rag_chunks
+```
+
+To enable persistent ChromaDB later, install optional RAG dependencies and switch provider:
+
+```powershell
+.\.venv\Scripts\python -m pip install -e .[rag]
+```
+
+```env
+VECTOR_STORE_PROVIDER=chroma
+VECTOR_STORE_PATH=./data/vectorstore
+VECTOR_STORE_COLLECTION=med_rag_chunks
+```
+
+Keep `memory` for fast tests; use `chroma` when you need indexed chunks to survive service restarts.
+
+Quick persistence check:
+
+```powershell
+.\.venv\Scripts\python -c "from app.services.retrieval_service import RetrievalService; s=RetrievalService(); s.ingest_and_index_document('data/samples/health_sample.md', chunk_size=300, chunk_overlap=50); print(s.vector_store.count())"
+.\.venv\Scripts\python -c "from app.services.retrieval_service import RetrievalService; s=RetrievalService(); print(s.search('blood pressure hypertension', top_k=1)[0].chunk.id)"
+```
+
+
+## Qwen Grounded Answer
+
+Default development mode uses a template answer path. To use Qwen through DashScope OpenAI-compatible APIs, set local `.env` values:
+
+```env
+LLM_PROVIDER=qwen
+LLM_MODEL=qwen3.6-plus
+QWEN_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+QWEN_API_KEY=your-local-key
+LLM_TIMEOUT_SECONDS=60
+```
+
+Do not commit `.env` or API keys.
+
+Grounded answer endpoint:
+
+```powershell
+Invoke-RestMethod -Method Post http://127.0.0.1:8000/chat/grounded `
+  -ContentType "application/json" `
+  -Body '{"question":"What is hypertension?","top_k":3,"use_llm":true}'
+```
+
+For offline testing without an LLM call, use:
+
+```json
+{"question":"What is hypertension?","top_k":3,"use_llm":false}
+```
+
+
+## Agentic RAG Workflow
+
+The first agentic endpoint exposes a traceable multi-step RAG workflow:
+
+```powershell
+Invoke-RestMethod -Method Post http://127.0.0.1:8000/agents/rag `
+  -ContentType "application/json" `
+  -Body '{"question":"What is hypertension?","top_k":3,"use_llm":true,"include_trace":true,"workflow_engine":"langgraph"}'
+```
+
+Current steps are `query_planner`, `retriever`, `evidence_critic`, `safety_reviewer`, and `answer_composer`. Each step includes `latency_ms`, `input_summary`, `output_summary`, and metadata. Set `workflow_engine` to `linear` for the dependency-light orchestrator or `langgraph` for the LangGraph-backed graph. The LangGraph engine uses conditional edges: insufficient evidence routes to `abstain_composer`, and high-risk or emergency questions route to `safety_guardrail_composer`.
+
+Agent runs are appended to JSONL for local audit/demo by default:
+
+```env
+AGENT_TRACE_ENABLED=true
+AGENT_TRACE_PATH=./data/traces/agent_runs.jsonl
+```
+
+Read recent runs:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/agents/runs?limit=20
+Invoke-RestMethod http://127.0.0.1:8000/agents/runs/{run_id}
+```
+
+
+## Healthcare Safety Fields
+
+Grounded answers include lightweight safety fields:
+
+- `risk_level`: `low`, `medium`, `high`, or `emergency`
+- `should_seek_doctor`: whether clinician follow-up is recommended
+- `safety_warnings`: user-facing safety notes
+
+The current rules are keyword-based and intentionally conservative. Later phases will move this into an agentic safety review step.
+
+
+## Evidence Quality Guard
+
+`POST /chat/grounded` supports evidence thresholds:
+
+- `min_score`: minimum retrieval score for citations
+- `min_citations`: minimum number of qualifying citations
+
+If evidence is insufficient, the service returns a low-confidence answer and does not call the LLM.
+
+
+## LLM Diagnostics
+
+Use diagnostics endpoints to verify provider config without exposing API keys:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/diagnostics/llm-config
+Invoke-RestMethod -Method Post http://127.0.0.1:8000/diagnostics/llm-check
+```
+
+`/diagnostics/llm-check` returns `available`, `status_code`, provider `error_code`, and `retryable` so Qwen quota or permission issues are visible during development.
+
+
+## Local RAG Evaluation
+
+Run the lightweight offline eval suite:
+
+```powershell
+.\.venv\Scripts\python scripts\run_eval.py
+```
+
+The default fixture checks retrieval hit rate, evidence status accuracy, healthcare safety accuracy, citation coverage, no-evidence rate, and per-case latency. Reports are written under `eval/reports/` and are ignored by Git.

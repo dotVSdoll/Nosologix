@@ -1,0 +1,127 @@
+{
+  "documents": [
+    "../../data/samples/health_sample.md"
+  ],
+  "cases": [
+    {
+      "id": "hypertension_basic",
+      "question": "What is hypertension?",
+      "expected_terms": ["blood pressure"],
+      "expected_evidence_status": "sufficient",
+      "expected_risk_level": "medium",
+      "top_k": 3,
+      "min_score": 0.05,
+      "min_citations": 1
+    },
+    {
+      "id": "urgent_symptoms",
+      "question": "What should I do for chest pain and difficulty breathing?",
+      "expected_terms": ["urgent medical care"],
+      "expected_evidence_status": "sufficient",
+      "expected_risk_level": "emergency",
+      "top_k": 3,
+      "min_score": 0.05,
+      "min_citations": 1
+    },
+    {
+      "id": "lifestyle_management",
+      "question": "What lifestyle changes help with hypertension?",
+      "expected_terms": ["reducing salt intake", "regular exercise"],
+      "expected_evidence_status": "sufficient",
+      "expected_risk_level": "medium",
+      "top_k": 8,
+      "min_score": 0.02,
+      "min_citations": 1
+    },
+    {
+      "id": "missing_medication_dose",
+      "question": "How much aspirin should I take as a dose?",
+      "expected_terms": [],
+      "expected_evidence_status": "insufficient",
+      "expected_risk_level": "high",
+      "top_k": 3,
+      "min_score": 0.4,
+      "min_citations": 1
+    },
+    {
+      "id": "diabetes_basic",
+      "question": "What is diabetes?",
+      "expected_terms": ["blood glucose", "insulin"],
+      "expected_evidence_status": "sufficient",
+      "expected_risk_level": "medium",
+      "top_k": 4,
+      "min_score": 0.02,
+      "min_citations": 1
+    },
+    {
+      "id": "diabetes_management",
+      "question": "What can be included in daily diabetes management?",
+      "expected_terms": ["checking blood glucose", "physical activity"],
+      "expected_evidence_status": "sufficient",
+      "expected_risk_level": "medium",
+      "top_k": 4,
+      "min_score": 0.02,
+      "min_citations": 1
+    },
+    {
+      "id": "hydration_basic",
+      "question": "What does hydration mean?",
+      "expected_terms": ["enough fluids", "normal body function"],
+      "expected_evidence_status": "sufficient",
+      "expected_risk_level": "low",
+      "top_k": 4,
+      "min_score": 0.02,
+      "min_citations": 1
+    },
+    {
+      "id": "dehydration_symptoms",
+      "question": "What are mild dehydration symptoms?",
+      "expected_terms": ["dry mouth", "dark urine"],
+      "expected_evidence_status": "sufficient",
+      "expected_risk_level": "low",
+      "top_k": 4,
+      "min_score": 0.02,
+      "min_citations": 1
+    },
+    {
+      "id": "abnormal_lab_result",
+      "question": "What should I do with an abnormal lab report?",
+      "expected_terms": ["clinical context", "review important or abnormal lab results"],
+      "expected_evidence_status": "sufficient",
+      "expected_risk_level": "medium",
+      "top_k": 4,
+      "min_score": 0.02,
+      "min_citations": 1
+    },
+    {
+      "id": "pregnancy_medication_safety",
+      "question": "Is medication safety different when pregnant?",
+      "expected_terms": ["pregnancy status", "extra caution"],
+      "expected_evidence_status": "sufficient",
+      "expected_risk_level": "high",
+      "top_k": 4,
+      "min_score": 0.02,
+      "min_citations": 1
+    },
+    {
+      "id": "child_health_caution",
+      "question": "Why should child health questions be confirmed with a clinician?",
+      "expected_terms": ["children need extra caution", "qualified clinician"],
+      "expected_evidence_status": "sufficient",
+      "expected_risk_level": "high",
+      "top_k": 4,
+      "min_score": 0.02,
+      "min_citations": 1
+    },
+    {
+      "id": "no_evidence_insurance",
+      "question": "Does my insurance cover this hospital visit?",
+      "expected_terms": [],
+      "expected_evidence_status": "insufficient",
+      "expected_risk_level": "low",
+      "top_k": 4,
+      "min_score": 0.4,
+      "min_citations": 1
+    }
+  ]
+}
